@@ -161,13 +161,13 @@ pub fn execute(ctx:Context<SweepFees>,creator:bool)->Result<()>{
   }
   (false,true)=>{}
  }
- crate::trade::quote_payments::transfer_to_owned(
-  native,a.base_mint.as_ref().as_ref(),a.bonding_curve.as_ref(),
-  a.recipient.to_account_info(),amount,&a.quote_token_program,
-  a.quote_mint.decimals,a.quote_mint.as_ref().as_ref(),
+ pay_fee(
+  native,&a.base_mint,a.bonding_curve.as_ref(),
+  a.recipient.to_account_info(),amount,
+  &a.quote_mint,
   if native{None}else{Some(a.associated_quote_bonding_curve.as_ref())},
   if native{None}else{Some(a.associated_quote_recipient.as_ref())},
-  ctx.bumps.bonding_curve,
+  &a.quote_token_program,ctx.bumps.bonding_curve,
  )?;
  let event=SweepBondingCurveFeeEvent{timestamp:Clock::get()?.unix_timestamp,mint:a.base_mint.key(),bonding_curve:a.bonding_curve.key(),quote_mint:a.bonding_curve.quote_mint,recipient:a.recipient.key(),amount,bucket:if creator{1}else{0}};emit!(event);emit_cpi!(event);Ok(())
 }
@@ -180,4 +180,9 @@ fn admit_quote_pair<'info>(a:&mut SweepFees<'info>,quote_mint:&Pubkey,quote_toke
 fn ensure_rent_exempt<'info>(system_program:&Program<'info,System>,payer:&Signer<'info>,destination:&AccountInfo<'info>)->Result<()>{
  let minimum=Rent::get().map(|rent|rent.minimum_balance(0))?;
  if destination.lamports()<minimum{crate::legacy_buy::native_payments::transfer(system_program.as_ref(),payer,destination,minimum)}else{Ok(())}
+}
+
+#[inline(always)]
+fn pay_fee<'info>(native:bool,base_mint:&InterfaceAccount<'info,anchor_spl::token_interface::Mint>,curve:&Account<'info,BondingCurve>,destination:AccountInfo<'info>,amount:u64,quote_mint:&InterfaceAccount<'info,anchor_spl::token_interface::Mint>,quote_source:Option<&AccountInfo<'info>>,quote_destination:Option<&AccountInfo<'info>>,token_program:&Interface<'info,anchor_spl::token_interface::TokenInterface>,bump:u8)->Result<()>{
+ crate::trade::quote_payments::transfer_to_owned(native,base_mint.as_ref(),curve,destination,amount,token_program,quote_mint.decimals,quote_mint.as_ref(),quote_source,quote_destination,bump)
 }
