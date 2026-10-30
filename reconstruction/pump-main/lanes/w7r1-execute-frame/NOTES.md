@@ -51,13 +51,28 @@ All are plain field stores of the same values; no `line!()` site in `init_curve`
 
 ## Remaining residuals (c2)
 
-- `mov r7,0`/`mov r2,0` swapped in the two Sol `Ok((Pubkey::default(),None,Sol))` blocks of
-  `validate_quote_mint`: IR oracle says the `bb112` join phi for the quote_mint first qword (SROA slice
-  `_84.sroa.31`, ptr-typed because it overlaps the Error payload) must come before the `QuoteSource` i8
-  phis (0.98870 -> 0.98978 on c2). Source spelling not found yet.
-- creator pointer allocated to r2 instead of r4, which moves the `name` pointer reload
-  (`ldxdw r2,[r10-0x718]`) from the top of the init_curve exit block to its use and swaps r2/r3/r4 in
-  ~34 instructions.
+Everything else in the window is identical; the IR oracle on c2 plus the phi fix below leaves only the RA residual.
+
+1. `mov r7,0`/`mov r2,0` swapped in the two Sol `Ok((Pubkey::default(),None,Sol))` blocks of
+   `validate_quote_mint`. IR oracle: the `bb112` join phi for the quote_mint first qword (SROA slice
+   `_84.sroa.31`, ptr-typed because it overlaps the `Error` payload) must come before the `QuoteSource`
+   i8 phis (c2 0.98870 -> 0.98978). `-print-after=sroa` shows why: mem2reg created the slices'
+   phis in the order `0,18,47,51` and then `31` in a later batch (phis are inserted at the block front,
+   and a later pass re-creates them reversed). In LLVM 18 `AllocaSliceRewriter::visitMemSetInst`
+   refuses to rewrite a memset whose full length (32, the zero `Pubkey`) does not convert to the
+   partition type (`ptr`, 8 bytes), so the slice is re-queued and promoted one SROA iteration later.
+   The original therefore promoted it with the others (e.g. an integer-typed access at offset 16,
+   or no 32-byte memset over it). Spellings tried, all byte-identical or worse: tuple order,
+   destructuring, `system_program::ID`/`new_from_array`/shared `sol` for the zero key,
+   `*mint.key`, a bound tuple, Sol check moved to the caller.
+2. creator pointer allocated to r2 instead of r4 (~34 instructions renamed r2/r3/r4). In the original
+   the `name` pointer is live in r2 at the init_curve exit-block entry: both `bb2.i73` edges jump to the
+   `ldxdw r2,[r10-0x718]` reload (tail-merged predecessor reloads), so greedy must have region-split
+   `name` before assigning the creator pointer. Ours reloads `name` right before `name.len()` because the
+   creator pointer already holds r2. Moving the `name.len()` load before the creator memcpy reproduces
+   `mov r4,r7` (but schedules the load early). No local IR move (bb59, exit block, bb112..bb6.i,
+   post-validate blocks, 674 block moves), branch weight, greedy knob or copy probe reproduces it with
+   the load late: the cause is a global greedy ordering effect.
 
 ## Ledger
 
