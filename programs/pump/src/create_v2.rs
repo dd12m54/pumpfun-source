@@ -769,15 +769,15 @@ pub fn execute<'info>(ctx:Context<'_,'_,'_,'info,CreateV2<'info>>,name:String,sy
 
 
 
- let mut fee=0;if matches!(source,QuoteSource::Controlled|QuoteSource::Nested(_)) && creator_fee_bps.0>0 {
+ let fee=if matches!(source,QuoteSource::Controlled|QuoteSource::Nested(_)) && creator_fee_bps.0>0 {
 
   require!(a.global.creator_fee_configurable,PumpError::CreatorFeeNotConfigurable);
 
 
 
   require!(creator_fee_bps.0<=a.global.max_configurable_creator_fee_bps,PumpError::CreatorFeeBpsOutOfRange);
-  fee=creator_fee_bps.0;
- }
+  creator_fee_bps.0
+ } else {0};
 
 
 
