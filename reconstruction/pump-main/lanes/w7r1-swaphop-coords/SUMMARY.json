@@ -1,0 +1,18 @@
+{
+  "lane": "w7r1-swaphop-coords",
+  "target": "0x5b3b0 multi_hop_curve::swap_hop",
+  "base": {"commit": "7e26cbf", "ratio": 0.7332, "bytes": 18544, "segdist": [522, 680], "official": [1027, 293]},
+  "best": {"trial": "n1", "ratio": 0.73666, "bytes": 18568, "segdist": [512, 670], "official": [1027, 293], "losses": [], "sha256_prefix": "1ca2289f70d6b324"},
+  "pr": "https://github.com/lalalune/pumpfun-source/pull/2366",
+  "kept_mechanisms": [
+    "b1: drop redundant paid_buyback != 0 guard before transfer_buyback_out (callee returns Ok for 0; orig has no test)",
+    "n1: const NO_FEE: Option<Fee> = None for the native quote_fee arm (orig stores tag + zero payload)"
+  ],
+  "rejected": ["c1 if !buy flip (identical)", "c2 match buy (identical)", "p1/p2 match post_fill (0.6817)", "m1 match complete_fill on b1 (0.73292)", "IR oracle e1/e3 block moves (worse)"],
+  "analysis": "All 20 Source{file,line} sites of multi_hop_curve_swap.rs and the 7 swap_hop closures already match; the coordinate angle is exhausted. Remaining residual is block layout and register allocation.",
+  "next_ideas": [
+    "IR oracle r1: reloading the a.token_program / a.token_2022_program pointers before the second token_program_for call (orig loads [a+0x40]/[a+0x48] twice) scored 0.76184 in llc; find the source cause",
+    "IR oracle e2: buy get_fees Ok block right after the call (+0.0006)",
+    "Instruction-shape multiset diff (tools/ shapes approach) for more semantic micro-differences"
+  ]
+}
