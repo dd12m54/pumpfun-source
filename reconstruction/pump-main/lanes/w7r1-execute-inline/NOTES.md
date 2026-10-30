@@ -22,7 +22,8 @@ remaining differences are inside inlined bodies.
 | Build | Bytes | Ratio | Official | Notes |
 | --- | ---: | ---: | --- | --- |
 | main 2b85821 | 15,584 | 0.96854 | 1027 / 276 | |
-| **t1** | 15,584 | **0.97284** | 1027 / 276, 0 losses, 0 raw losses | creator store after token_total_supply |
+| t1 | 15,584 | 0.97284 | 1027 / 276, 0 losses, 0 raw losses | creator store after token_total_supply |
+| **t2** | 15,576 | **0.98763** (slots_diff 42) | 1027 / 276, 0 losses, 0 raw losses | t1 + fee `if/else` expression (found by w7r1-execute-blockorder-b / -frame) |
 
 ## t1: `bonding_curve.creator=creator` after `token_total_supply`
 
@@ -34,6 +35,19 @@ DAG and its IR position now decides its place. IR oracle (memcpy moved after the
 0.97284; the source move reproduces it exactly. (w4 `v5` tried the same move when the GEP was
 still folded into the Account pointer and saw no change.) init_curve has no `line!()` sites,
 so moving a line inside it changes no immediates.
+
+## t2: t1 + `let fee=if .. {require..; creator_fee_bps.0} else {0};`
+
+Sibling lanes w7r1-execute-blockorder-b and w7r1-execute-frame found (ledger
+`*-e1-fee-if-else-expr-v1`, `*-t1-let-fee-if-else-v1`) that the `mut fee` form puts the fee check
+blocks between the `validate_metadata` exit and its `?` Ok target in IR order, so ISel emits
+`jeq ->Ok; ja ->Err` (BPF cannot reverse a branch later) instead of the original `jne ->Err`.
+The if/else expression creates the join after the then-chain. The two changes are independent
+and stack: 0.98763 at the original's exact size (15,576 B). Line count unchanged.
+
+Remaining (oracle diff, 46 lines): `mov r7,0`/`mov r2,0` order in the two `Sol` returns of
+validate_quote_mint, and the creator pointer in r2 instead of r4 with the `[r10-0x718]` (name) reload
+placed after the stores instead of before.
 
 ## Ledger
 
