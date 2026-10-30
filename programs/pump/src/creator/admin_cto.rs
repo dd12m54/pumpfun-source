@@ -280,7 +280,7 @@ struct CtoState{creator:Pubkey,max_fee:u64,mayhem:bool,holder_reward:bool,cashba
 
 
 
-fn validate(st:&CtoState,holder:bool,fee:Option<u64>,new:Option<Pubkey>,holder_key:Pubkey,sharing:Pubkey)->Result<Pubkey>{
+fn validate(st:&CtoState,holder:bool,fee:Option<u64>,mut new:Option<Pubkey>,holder_key:Pubkey,sharing:Pubkey)->Result<Pubkey>{
  if st.mayhem{return Err(error!(PumpError::CtoNotAllowedForMayhemCoin));}
 // Reconstructed positions of the same deployed validations.
 
@@ -293,17 +293,17 @@ fn validate(st:&CtoState,holder:bool,fee:Option<u64>,new:Option<Pubkey>,holder_k
 
 
 
- if holder&&!st.holder_reward&&!st.holder_enabled{return Err(error!(PumpError::HolderRewardDisabled));}
+ let target=if holder{if !st.holder_reward&&!st.holder_enabled{return Err(error!(PumpError::HolderRewardDisabled));}
 
- let target=if holder{if new.is_some(){return Err(error!(PumpError::CtoNewCreatorNotAllowed));}holder_key}else{
-
-
+  if new.take().is_some(){return Err(error!(PumpError::CtoNewCreatorNotAllowed));}holder_key}else{
 
 
 
 
 
-  let Some(t)=new else{return Err(error!(PumpError::CtoNewCreatorRequired));};
+
+
+  let Some(t)=new.take() else{return Err(error!(PumpError::CtoNewCreatorRequired));};
   if t==Pubkey::default(){return Err(error!(PumpError::CreatorShouldNotBeZero).with_pubkeys((t,Pubkey::default())));}
 
 
