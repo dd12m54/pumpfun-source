@@ -142,7 +142,7 @@ pub fn execute(ctx:Context<SweepFees>,creator:bool)->Result<()>{
 
 
  
- match creator as u8{1=>{let expected=Pubkey::find_program_address(&[b"creator-vault",a.bonding_curve.creator.as_ref()],&crate::ID).0;require_keys_eq!(a.recipient.key(),expected,anchor_lang::error::ErrorCode::ConstraintSeeds);
+ match creator as u32{1=>{let expected=Pubkey::find_program_address(&[b"creator-vault",a.bonding_curve.creator.as_ref()],&crate::ID).0;require_keys_eq!(a.recipient.key(),expected,anchor_lang::error::ErrorCode::ConstraintSeeds);
  }_=>{crate::legacy_sell::fee_recipient::validate_fee_recipient(&a.recipient,&a.global,&a.bonding_curve)?;
  }}
  let amount=if creator{let v=a.bonding_curve.creator_fee;a.bonding_curve.creator_fee=0;v}else{let v=a.bonding_curve.protocol_fees;a.bonding_curve.protocol_fees=0;v};

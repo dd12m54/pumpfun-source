@@ -8,17 +8,17 @@ recreated/used the same worktree, branch and cache dir, so this lane works under
 
 Base: origin/main 7e26cbf (s6 sweep; trials started on 2b85821, identical programs/pump/src). Baseline build: 1027/1035 normalized, 293 raw. Target: original 7,832 B, 39 direct calls.
 
-| metric | base (s6) | h5p | p6 (PR head) |
-|---|---:|---:|---:|
-| ratio (target_metric) | 0.88669 | 0.91723 | **0.99479** |
-| cand bytes (orig 7832) | 7880 | 7856 | **7832** |
-| slots_diff (equal size only) | - | - | **35** |
-| direct calls (orig 39) | 39 | 39 | 39 |
-| fullmask diff lines (regs, stack offsets, jumps masked; llc oracle) | 64 | 22 | **8** |
-| raw diff lines (llc oracle) | 222 | 159 | **10** |
-| official normalized / raw | 1027 / 293 | 1027 / 293 | 1027 / 293 |
-| gains / losses | - | none / none | none / none |
-| unstripped sha256 | 0560a482.. | dfc8eb87.. | 9c53f9167d338c4f16b0fc367f21aab4ac3dbb2f6b91bd895b2c95729e3e1f4e |
+| metric | base (s6) | h5p | p6 | m32 (PR head) |
+|---|---:|---:|---:|---:|
+| ratio (target_metric) | 0.88669 | 0.91723 | 0.99479 | **0.99687** |
+| cand bytes (orig 7832) | 7880 | 7856 | 7832 | **7832** |
+| slots_diff (equal size only) | - | - | 35 | **30** |
+| direct calls (orig 39) | 39 | 39 | 39 | 39 |
+| fullmask diff lines (regs, stack offsets, jumps masked; llc oracle) | 64 | 22 | 8 | **4** |
+| raw diff lines (llc oracle) | 222 | 159 | 10 | **6** |
+| official normalized / raw | 1027 / 293 | 1027 / 293 | 1027 / 293 | 1027 / 293 |
+| gains / losses | - | none / none | none / none | none / none |
+| unstripped sha256 | 0560a482.. | dfc8eb87.. | 9c53f916.. | d3da65bc982d26c50a49a3eb4324a2e9b52baad8459d2d004c5f5d60210aa745 |
 
 ## Mechanism
 
@@ -63,9 +63,17 @@ the `&a.quote_token_program` gep is evaluated before the quote box load and gets
 the token path (`bb27.thread`), which re-lays-out the token path (fullmask 308). With
 `quote_mint` first (p6), the function is 7,832 B, the same size as the original, with ratio 0.99479.
 
-## Remaining residuals (p6, 10 raw diff lines)
-1. Admit branch polarity (first `jeq;ja` vs `jne`, second the other way): IR block order (w4-sweep).
-2. Event: `bucket` store (creator reload) scheduled before `amount` (orig after `recipient`).
+## m32: dispatch scrutinee `creator as u32`
+
+`match creator as u8 {1=>..}` let MIR GVN reuse the u8 cast for the event `bucket`, so the event
+store was scheduled first. Lanes w7r1-execute-anchor and w7r1-execute-sibling found that a wider
+scrutinee fixes this. Applied on p6 (`as i32` gives the same bytes): event store order matches.
+
+## Remaining residual (m32, 6 raw diff lines, slots_diff 30)
+Polarity of the two admit branches (first `jeq;ja` vs `jne`, second the other way). This is IR
+block order: the protocol-native clone chain must sit between admit1's test and admit2.
+Writing the admits inline (a37 form) gives that order, but the join `AccountInfo::clone` then
+has a cold call site (pre-inline freq ~0.0187 < 2%, cost 60 > threshold 45) and stays out of line (40 calls).
 
 ## Ledger
 Attempts recorded with keys `0x72810-main-2b85821-*` (lane w7r1-execute-errors).
