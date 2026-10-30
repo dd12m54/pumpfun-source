@@ -74,6 +74,27 @@ build all give `d7dca7cc`. `compare_scores.py` accepts against the fresh main bu
   source-driven until the handler shapes settle. Then `--mode all` lifts the fixed-size ceiling
   from 477 to 1022, without the source-level order work.
 
+## Crate identity under a pinned order (`ab341d79`, rejected)
+
+The likely original identity, tried as a recipe change (line-neutral): package and crate `pump`
+0.1.0, `#[program] pub mod pump`, program type `Pump`, link script regenerated for that build.
+- In rustc order it gives 1027/**192** (-84). The lost windows are the L tail that
+  layout-order-census's `bonding_curve_instruction_accounts` wrap fixed. MergeFunctions keeps the twin
+  with the smallest mangled name, and the crate name changes those lengths, so the merged
+  `ToAccountInfos` bodies land at other def positions.
+- With the regenerated U+D script it gives 1027/209 (the same +17).
+So crate identity reaches the bytes only through which merged twin survives at which def position.
+A full-order script places those bodies directly. The original name buys nothing, which is why the
+siblings never recovered theirs.
+
+## Other sibling choices checked (`2fd5f551`)
+
+The Fees patch to `anchor-attribute-program` is 0.31.2 plus `#[used]` on the `declare_program!` ID
+statics, and `anchor-syn` 0.31.1 equals 0.31.2. It only keeps otherwise-dropped statics. Pump `.rodata` is
+already the original's size with every data offset equal, so it has nothing to add. The remaining
+differences give no sign of a dependency version or feature difference: the 8 unmatched windows are
+root-crate codegen, and `.rel.dyn` has 2 extra `R_SBF_64_RELATIVE` entries from root `.text` lddw.
+
 ## Attempts
 
 | id | trial | result |
@@ -82,3 +103,5 @@ build all give `d7dca7cc`. `compare_scores.py` accepts against the fresh main bu
 | `fc1c0930` | same as the pinned fastbuild recipe (lane work dir and fresh work dir) | 1027/293, sha d7dca7cc, regen reproduces the script |
 | `ae684b75` | also L in original order (`--mode all`, 1037 selectors), offline relink | 1027/293, 0 losses, same raw set; not default (see above) |
 | `a30bac7d` | model: the 9 wrong-size units placed at L start/end, text start/end | 293 / 209 / 293 / 293: no gain |
+| `ab341d79` | crate/package `pump`, `mod pump`, type `Pump`, regenerated script | 1027/192 default order, 1027/209 with script: rejected |
+| `2fd5f551` | Fees' `anchor-attribute-program` `#[used]` patch | analyzed: nothing for Pump to gain |
