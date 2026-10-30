@@ -6,7 +6,9 @@ Angle: sibling transplant (copy spellings from matched sibling handlers / AMM / 
 Base: origin/main e3f3be8 (1027 normalized / 293 raw), target 0.96854 at 15,584 B.
 Worktree note: the assigned worktree path was in use by another session, so this lane worked in
 `worktrees/w7r1-execute-sibling-e7c0` (detached at e3f3be8), outputs under
-`~/.cache/pumpfun-reconstruction/lanes/w7r1-execute-sibling/e7c0/`.
+`~/.cache/pumpfun-reconstruction/lanes/w7r1-execute-sibling/e7c0/`, branch
+`swarm/w7r1-execute-sibling-cv2` (PR #2341), because `swarm/w7r1-execute-sibling` carries that
+session's sweep::execute PR #2309.
 
 ## Result
 
