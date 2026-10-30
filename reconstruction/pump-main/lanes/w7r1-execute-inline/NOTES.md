@@ -23,7 +23,8 @@ remaining differences are inside inlined bodies.
 | --- | ---: | ---: | --- | --- |
 | main 2b85821 | 15,584 | 0.96854 | 1027 / 276 | |
 | t1 | 15,584 | 0.97284 | 1027 / 276, 0 losses, 0 raw losses | creator store after token_total_supply |
-| **t2** | 15,576 | **0.98763** (slots_diff 42) | 1027 / 276, 0 losses, 0 raw losses | t1 + fee `if/else` expression (found by w7r1-execute-blockorder-b / -frame) |
+| t2 | 15,576 | 0.98763 (slots_diff 42) | 1027 / 276, 0 losses, 0 raw losses | t1 + fee `if/else` expression (found by w7r1-execute-blockorder-b / -frame) |
+| **t3** | 15,576 | **0.98870** (slots_diff 43) | 1027 / 276, 0 losses, 0 raw losses | t2 + vqr, ivqr, vtr store order (w7r1-execute-frame `o2`) |
 
 ## t1: `bonding_curve.creator=creator` after `token_total_supply`
 
@@ -48,6 +49,29 @@ and stack: 0.98763 at the original's exact size (15,576 B). Line count unchanged
 Remaining (oracle diff, 46 lines): `mov r7,0`/`mov r2,0` order in the two `Sol` returns of
 validate_quote_mint, and the creator pointer in r2 instead of r4 with the `[r10-0x718]` (name) reload
 placed after the stores instead of before.
+
+## t3: store order vqr, ivqr, vtr (w7r1-execute-frame `o2`)
+
+Writing `virtual_quote_reserves` before `initial_virtual_quote_reserves` and `virtual_token_reserves`
+moves the `[r5+0x3e8]` load to the original position. 0.98870 on top of t2.
+
+## Residual A: `mov r7,0`/`mov r2,0` (bb112 phi order), root cause
+
+IR oracle: in bb112 (join of the two `Sol` returns and the main Ok path of the inlined
+validate_quote_mint) the quote_mint first-qword phi (`_84.sroa.31`, ptr) comes last; placing it
+before the QuoteSource phis fixes both swaps (t2: 0.98870, t3: 0.98978).
+Cause, reproduced with `opt -passes=sroa` (Homebrew LLVM 21) on the module dumped right after the
+CGSCC inliner ran on execute (`-print-after=inline -print-module-scope`): partition [16,24) of the
+inlined result `_84` is ptr-typed (Err `Box` pointer stores, and execute's pre-inline SROA reuses the
+Err-payload `load ptr` for quote word 0), and both Sol returns write the quote with one 32-byte
+memset over [16,48). SROA cannot rewrite the split memset slice as a ptr store, keeps a memset on the
+new alloca and re-queues it, so that slice is promoted (its phis created) after all others;
+JumpThreading then builds bb112's phis in that order. On the pre-SROA module, splitting both
+memsets (store word0 + memset 24) or replacing them with a memcpy from a zero constant gives the
+original order; splitting only one does not; changing the main path's memcpy source does nothing.
+So the source has to deliver the Sol-path zero quote as something other than a single memset at
+inline time (or make word0 integer-typed). Every zero spelling tried (Pubkey::default,
+new_from_array, system_program::ID, `let sol`, Default::default) folds to the same memset.
 
 ## Ledger
 
