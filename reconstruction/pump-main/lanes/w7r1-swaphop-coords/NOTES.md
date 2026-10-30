@@ -47,7 +47,10 @@ callee's coordinate lines (closure lines identify which `ok_or_else` a call is).
 | base | origin/main 7e26cbf | 18,544 | 0.7332 | 522/680 | 1027/293 |
 | c1 | `if !buy { amount } else { post_fee_amount(..)? }` | = base (byte-identical) | | | |
 | c2 | `match buy { false => amount, true => .. }` | = base | | | |
-| **b1** | `else if paid_buyback != 0 { transfer_buyback_out(..)? }` -> `else { transfer_buyback_out(..)? }` | **18,544** | **0.73539** | **515/673** | 1027/293, 0 losses |
+| b1 | `else if paid_buyback != 0 { transfer_buyback_out(..)? }` -> `else { transfer_buyback_out(..)? }` | 18,544 | 0.73539 | 515/673 | 1027/293, 0 losses |
+| p1, p2 | b1 + `match post_fill { None => {}, Some(post) => .. }` (either arm order) | 18,536 | 0.6817 | 710/863 | rejected: the post-event route chain moves to the end |
+| m1 | b1 + `match complete_fill(..)? { Some(..) => .., None => .. }` | 18,536 | 0.73292 | 514/672 | rejected (ratio) |
+| **n1** | b1 + native `quote_fee` from `const NO_FEE: Option<Fee> = None` | **18,568** | **0.73666** | **512/670** | 1027/293, 0 losses |
 
 ### b1 mechanism
 Control-flow spot c70: the original goes from the buyback native test (0x2f40 `jeq native → 0x3788`)
@@ -57,4 +60,13 @@ straight into the `mhc_transfer_buyback_out` argument setup; there is no `paid_b
 behaviour-identical (same mechanism as w6r1-swaphop-ir's `if last` for `transfer_base_out`).
 Size is unchanged (18,544 B), so raw 0xa868 stays matched.
 
-Ledger ids: census 20f42d0f, c1 886786e5, c2 946528be, b1 55786c05.
+### n1 mechanism
+Orig's native arm of `quote_fee` (0x0688-0x06a8) stores all four words of the
+`Option<Fee>` (tag and three payload zeros); ours stored only the tag. Copying a `const`
+`None` copies the zero-initialised aggregate, which is exactly the spelling the sibling
+handlers use (`sell_v2.rs:369`, `trade_v3.rs:200`, and `get_transfer_fee` itself):
+`const NO_FEE: Option<Fee> = None; let quote_fee = if native { NO_FEE } else { .. };`
+(kept on line 485, so no coordinate moves). Behaviour is identical.
+
+Ledger ids: census 20f42d0f, c1 886786e5, c2 946528be, b1 55786c05, p1/p2 c7218cac
+(measured on b1), m1 cfc651a9, n1 d5eb663f.
