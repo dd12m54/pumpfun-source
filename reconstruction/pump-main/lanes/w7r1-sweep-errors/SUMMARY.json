@@ -1,0 +1,19 @@
+{
+  "lane": "w7r1-sweep-errors",
+  "assigned_lane": "w7r1-execute-errors",
+  "target": "0x72810 sweep::execute",
+  "pr": "https://github.com/lalalune/pumpfun-source/pull/2313",
+  "pr_head": "81d4799b0",
+  "base": {"commit": "7e26cbf36", "ratio": 0.88669, "bytes": 7880, "calls": 39, "official": "1027/293"},
+  "best": {"variant": "m32", "ratio": 0.99687, "bytes": 7832, "slots_diff": 30, "calls": 39, "official": "1027/293", "losses": [], "unstripped_sha256": "d3da65bc982d26c50a49a3eb4324a2e9b52baad8459d2d004c5f5d60210aa745"},
+  "mechanisms_kept": [
+    "native via plain is_native(&Pubkey): pre-inline creator native test is a call result (0.5, not zero-heuristic 0.375), so the rent call site is warm (0.0214) and the event stays cold (0.0147)",
+    "pub fn ensure_rent_exempt with body Rent::get()?.minimum_balance(0) (legacy_native_payments body): CGSCC-inlined after simplification; hidden linkage prevents ArgPromotion hoisting the system_program load",
+    "transfer via #[inline(always)] pay_owned(native,&base_mint,&curve,dest,amount,&quote_mint,&token_program,src,dst,bump): mint derefs after the Option diamonds; quote_mint before token_program avoids the gep hoist",
+    "dispatch match creator as u32 (from w7r1-execute-anchor/-sibling): event bucket store order"
+  ],
+  "attempts": 45,
+  "rejected": ["helper body spellings (map, ?;Ok, return transfer, >=return)", "private rent helper (ArgPromotion)", "rent helper taking &SweepFees", "Options bound in lets/tuple/match arms", "pay_owned with token_program before quote_mint, base-only, accounts-struct wrapper", "bucket as u8/u8::from", "admit1 if-let/match/is_err forms in helper", "admits inline (join clone cold, 0.0187)", "RNT arm order (protocol-native path no longer duplicated)", "match-level ? with admit2 as arm tail", "bound curve_info in admit helper"],
+  "unresolved": "admit branch polarity (2 branches, 30 slots): IR block order needs the protocol-native clone chain between admit1's test and admit2; with admits inline the join clone site is 0.0187 (< 2%, cost 60 > 45)",
+  "next_ideas": ["raise the join site >= 2% with admits inline: a token-path native test the pre-inline IR does not re-test (creator non-native edge currently re-tested at the shared switch, halving its mass)", "a natural spelling where only the creator bucket's native test is opaque and the protocol test stays memcmp (token path 0.0427)", "IR oracle: move admit2 block after the bb28 chain on m32 to confirm a full normalized match"]
+}
