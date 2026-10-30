@@ -9,7 +9,8 @@ Base: origin/main a7135a6a6 (1027/1035 normalized, 276 raw), target 0.85100 at 1
 | Build | Bytes | Ratio | Official | unstripped sha256 |
 | --- | ---: | ---: | --- | --- |
 | main a7135a6a6 (p1) | 15,576 | 0.85100 | 1027 / 276 | |
-| **f1 = found binding + mutable override** | 15,656 | **0.88948** | 1027 / 276, 0 losses | 44782f4f2aade26b |
+| f1 = found binding + mutable override | 15,656 | 0.88948 | 1027 / 276, 0 losses | 44782f4f2aade26b |
+| **s1 = f1 + depth computed in execute right before `init_curve(.., depth: u8, ..)`** | 15,568 | **0.95184** | 1027 / 276, 0 losses | 899ef3b30fe351fe |
 
 ## Mechanism f1: the Some payload is loaded before the Option test
 
@@ -38,6 +39,16 @@ The payload feeds a phi at the join, so it is loaded unconditionally next to the
 `walk` path becomes a plain then-block that falls through. `?` and an explicit `Ok(v)/Err` match are
 byte-identical here. Behaviour is unchanged (Some -> Controlled with its reserves, None -> walk).
 Line count of the region is unchanged (no `line!()` sites inside it).
+
+## Mechanism s1: depth select at the top of the curve initialisation
+
+The original computes the depth select (`jlt tag,3; mov r9,r5`) right after the fee phi and *before*
+loading the bonding-curve pointer and the `quote_mint == sol` memcmp. With depth computed inside
+`init_curve` (p1/f1) LLVM placed the select in the helper's exit block, at its store. IR oracle
+`ied/dtop.py` (select moved to the top of `bb58`) gives 0.95184; computing
+`let depth=match source {..}` in `execute` on the line right before the call and passing `depth: u8`
+reproduces it exactly. Computing it right after `validate_quote_mint` instead gives 0.88931. The
+line that held the match inside `init_curve` is left blank so later `line!()` immediates are unchanged.
 
 ## Ledger
 
