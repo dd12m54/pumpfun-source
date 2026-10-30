@@ -100,3 +100,10 @@ unmatched windows' total size delta at 0. Today that is create_v2 +8, admin_cto 
 | `4aed3843` | inline-remark + BFI oracle on validate | 307/312 at 2.2% BFI (cold threshold 2%), infeasible holder edge |
 | `f5a10147`, `4e7f17e3` | t01/t02: 296 check inside the holder arm (6484b28, fb25fce) | **kept**: to_string set = original, `.rel.dyn` 6147 = 6147, 0 losses |
 | `32ba9da6` | merged with #2168 | 0 losses, raw 336 = 336 |
+
+## Merge review (2026-10-30, main 5b54ad5)
+
+Merged with origin/main, the admin_cto reorder scores 1032 / 347 (13 gains vs baseline), the same as main, with
+0 normalized and 0 raw losses. admin_cto 0x22a10 (original 27400 B) goes from 27344 B / ratio 0.37637 on main
+to 26928 B / 0.32392, which is further from the original size. #2412 had already restored admin_cto to 27344 B.
+The source change is not merged; main's programs/pump is kept, and this lane's notes and tools are kept as a record.
