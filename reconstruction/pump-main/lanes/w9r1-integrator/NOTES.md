@@ -62,3 +62,23 @@ elf_meta_diff on the combination: `.text` -56 (admin_cto only), every non-.text 
 follows from .text, no build-input differences.
 
 Ledger: cf07fac9359143518e45cf9e5a527702, 9c3174d4844c4a54ad253202716f279a.
+
+## Round 2 (main 7ca3235dc, fresh build 1032/337, sha 56143aaa)
+
+Main merged #2214 (admin_cto `let swept; ... else{swept=0;}`), which moves admin_cto from
+27344 B to 27240 B (orig 27400; ratio 0.37637 -> 0.3765). #2403's head (8073709c6) reached
+swap_hop 18584 B, slots_diff 1023, ratio 0.85352 on its own, superseding this lane's
+#2403+#2368 (1636 slots); the hill-climb of the w7r1-swaphop-hillclimb mutation catalog on
+that base (~105 single mutations) found nothing better at 18584 B and was stopped.
+
+| combination on 7ca3235dc | admin_cto | swap_hop | norm/raw | .text |
+| --- | --- | --- | --- | --- |
+| main | 27240, 0.3765 | 18544, 0.7332 | 1032/337 | -200 |
+| #2403 | 27240, 0.3765 | 18584, 0.85352, 1023 slots | 1032/347 | -160 |
+| #2403 + #2416 | 27128, 0.39103 | 18584, 0.85352 | 1032/347 | -272 |
+| **#2403 + revert #2214** | **27344**, 0.37637 | 18584, 0.85352, 1023 slots | **1032/347** | **-56** |
+
+The branch carries #2403's multi_hop_curve_swap.rs and reverts #2214's one-line hunk
+(line count unchanged). elf_meta_diff: .text -56, every other difference follows from .text,
+no build-input differences. unstripped sha256 3ca6911a64bdfb6251603f60d69ae6c8919af03d801b82b72fcc3e0dd6c8ec4d.
+Ledger 0e0ffcb44d4c4ff19327d84acc31d5f2, 7230782a35e940078c6b52c1de92a5ea.
