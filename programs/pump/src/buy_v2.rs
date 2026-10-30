@@ -467,9 +467,9 @@ fn buy_handler<'info>(ctx:Context<'_,'_,'_,'info,BuyV2<'info>>,mut input:u64,lim
 // layout-pad
 // layout-pad
  let quote_transfer_fee=gross.checked_sub(quote).ok_or_else(||error!(PumpError::Overflow))?;
- let whitelisted=a.global.whitelist_pda==a.user.key();let (pf,cf,protocol_fee_bps,creator_fee_bps)=if whitelisted{Ok((0,0,0,0))}else{crate::legacy_sell::fee_cpi::trade_fees(
+ let whitelisted=a.global.whitelist_pda==a.user.key();let (cf,pf,protocol_fee_bps,creator_fee_bps)=if whitelisted{(0,0,0,0)}else{let (pf,cf,p,c)=crate::legacy_sell::fee_cpi::trade_fees(
   &a.global,&a.bonding_curve,&a.base_mint,&a.fee_config,&a.fee_program,a.program.as_ref(),quote
- )}?;
+ )?;(cf,pf,p,c)};
 // layout-pad
 // layout-pad
 // layout-pad
