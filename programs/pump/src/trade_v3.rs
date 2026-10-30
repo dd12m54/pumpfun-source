@@ -1002,7 +1002,7 @@ pub fn buy_exact_quote(ctx:Context<SellV3>,spendable_quote_in:u64,min_tokens_out
         (tokens,net,net_fees,None,costs)
     };
     let (buyback,post_buyback)=v3_execute_buy(a,ctx.bumps.bonding_curve,is_sol,amount,quote,fees.protocol_fee,fees.creator_fee,post.as_ref(),costs.0,costs.1,&quote_fee)?;
-    v3_emit_buy(&mut ctx,amount,quote,&fees,buyback,costs.2,"buy_exact_quote_in",&post,post_buyback)
+    emit_exact_quote(&mut ctx,amount,quote,fees,buyback,costs.2,post,post_buyback)
 }
 #[inline(never)]
 fn v3_emit_buy(ctx:&mut Context<SellV3>,amount:u64,quote:u64,fees:&TradeFees,buyback_fee:u64,quote_transfer_fee:u64,ix_name:&str,post:&Option<PostComplete>,post_buyback_fee:u64)->Result<()>{
@@ -1311,3 +1311,5 @@ fn net_quote(curve:&BondingCurve,fees:&TradeFees,budget:u64)->Result<(u64,TradeF
 fn net_costs(a:&SellV3,quote_fee:&Option<native_transfer_fee::Fee>,net:u64,fees:&TradeFees)->Result<(u64,u64,u64)>{let curve:&BondingCurve=&a.bonding_curve;v3_buy_costs(a.global.buyback_basis_points,curve.is_mayhem_mode as u8,quote_fee,net,fees.protocol_fee,fees.creator_fee,None)}
 
 fn cost_total(costs:&(u64,u64,u64))->Result<u64>{add(costs.0,costs.1)}
+
+fn emit_exact_quote(ctx:&mut Context<SellV3>,amount:u64,quote:u64,fees:TradeFees,buyback_fee:u64,quote_transfer_fee:u64,post:Option<PostComplete>,post_buyback_fee:u64)->Result<()>{v3_emit_buy(ctx,amount,quote,&fees,buyback_fee,quote_transfer_fee,"buy_exact_quote_in",&post,post_buyback_fee)}
