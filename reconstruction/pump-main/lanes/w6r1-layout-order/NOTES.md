@@ -148,3 +148,19 @@ The trailing `#[cold]` identity call makes the block cold while the inliner look
 
 Model: P8 432 -> **452**; with buy_handler at the program position 649 -> **671**; also with pay_out_native
 654 -> 677. Unstripped dcdcc13c754e7b81 (stripped candidate 9a24fc1e, the same with or without the dead module).
+
+## Kept: `shareholders.to_vec()` (`f059ac34`)
+
+The original U unit 0xcf18 (336 B, same body as our `<Vec<Shareholder> as Clone>::clone`) sits between
+`<u64 as BorshDeserialize>` and `<bool as BorshDeserialize>`, which `_ZN67_..Vec..Clone..clone` cannot do in
+symbol order. The original spelled the 5 event copies in distribute_creator_fees.rs and
+distribute_creator_fee_v2.rs as `shareholders.to_vec()`. That outlines `<T as alloc::slice::hack::ConvertVec>::to_vec`,
+which now lands at candidate 0xcf18, the original address. 0 losses, unmatched windows identical. Model P8
+452 -> **462**; with buy_handler + pay_out_native 677 -> **702**.
+
+`tools/uanom.py` lists U units whose original neighbours break symbol order (non-hash anomalies). Only three
+are left, all `drop_in_place<pump_recovered::..>`: Migrate, AdminCto and Option<PreviousHop>. Each fits the
+original's order exactly if the root crate name is 10 characters shorter (`pump`). For example,
+`_ZN4core3ptr43drop_in_place<pump::migrate::Migrate>` falls between `..42..std::io::Error` and
+`..46..anchor_lang::Error`. That is more evidence that the original crate was named `pump`. The model value is only +3,
+and a rename needs Cargo identity and harness changes, so it was not attempted.
