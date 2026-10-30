@@ -752,7 +752,7 @@ pub fn transfer_input<'info>(a: &MultiHopCurve<'info>, previous: Option<&Previou
         if flag & 1 != 0 {
             if native {
                 native_buyback(a,event_bump,&h.bonding_curve,paid_buyback)?;
-            } else {
+            } else if paid_buyback != 0 {
                 transfer_buyback_out(&quote_token_program,&h.associated_quote_bonding_curve,&a.buyback_fee_recipient,
                     &h.bonding_curve,h.quote_mint.decimals,AsRef::<AccountInfo>::as_ref(&*h.quote_mint),
                     paid_buyback,seeds)?;
