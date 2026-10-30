@@ -22,3 +22,23 @@ call. This reproduces the w7 pre-opt "drop noalias on a" oracle byte for byte.
 | bytes (orig 18,584) | 18,544 | 18,600 |
 | calls | 107/1 | 107/1 |
 | normalized / raw | 1031 / 337 | 1031 / 337, no losses |
+
+## Result 2: w7 sibling mechanisms composed on the &Context base
+
+| trial | change (on ctx1) | bytes | ratio | ledger |
+|---|---|---:|---:|---|
+| m1 | `require_gt!(base,0,BuyZeroAmount)` (590) | 18,608 | 0.83242 | 33b8eb21 |
+| m2 | `raw_output = base_amount.checked_add(match &post_fill{..})` | 18,576 | 0.83184 | 2156ce51 |
+| m3 | buyback `else` without `paid_buyback != 0` guard | 18,600 | 0.83217 | 46869e80 |
+| m4 | `const NO_FEE` for native quote_fee | 18,624 | 0.83293 | 1ce5d202 |
+| all4 | m1+m2+m3+m4 | 18,608 | 0.83636 | e044b7e7 |
+| **a5** | all4 + scoped user key `let allowed = { let user = a.user.key(); .. }; require!(allowed, ..)` | **18,640** | **0.84043** | 2c888585 |
+| a7 | all4 + complete_fill Some arm returns its `TradeFees` whole | 18,640 | 0.8365 | f4a2f821 |
+| a57 | a5 + a7 | 18,672 | 0.83795 | 462472b7 |
+| a5n1 | a5 without m1 | 18,632 | 0.82271 | fcade5ba |
+| a6 | all4 + `v3_can_cross` | compile error (private) | | a11be097 |
+
+The w7 u2 scoped key lost ratio on the old base (-3.2 pts) but gains on the &Context base.
+Raw 948 (611 raw gains) on a5 is an artifact: swap_hop +56 B cancels admin_cto's -56 B shift, so
+every function after swap_hop is at its original address. That will reverse once admin_cto grows,
+unless swap_hop reaches 18,584 B.
