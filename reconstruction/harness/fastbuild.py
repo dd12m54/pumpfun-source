@@ -163,7 +163,9 @@ def _build_locked(src: Path, work: Path, out: Path, quiet=False, recipe=None, ti
         OBJDUMP=str(SDK / 'llvm/bin/llvm-objdump'),
         OBJCOPY=str(SDK / 'llvm/bin/llvm-objcopy'),
     )
-    env['CARGO_TARGET_' + triple.upper().replace('-', '_') + '_RUSTFLAGS'] = '-Zremap-cwd-prefix='
+    # cargo build-sbf's own default target RUSTFLAGS; PUMP_EXTRA_RUSTFLAGS appends experiment flags.
+    flags = '-Zremap-cwd-prefix=' + ((' ' + os.environ['PUMP_EXTRA_RUSTFLAGS']) if os.environ.get('PUMP_EXTRA_RUSTFLAGS') else '')
+    env['CARGO_TARGET_' + triple.upper().replace('-', '_') + '_RUSTFLAGS'] = flags
     env.pop('RUSTFLAGS', None); env.pop('CARGO_ENCODED_RUSTFLAGS', None)
     cmd = [str(SDK / 'rust/bin/cargo'), 'build', '--manifest-path', str(crate / 'Cargo.toml'), '--release',
            '--target', triple, '--locked', '--offline']
