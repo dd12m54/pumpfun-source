@@ -911,7 +911,7 @@ pub fn buy_exact_quote(ctx:Context<SellV3>,spendable_quote_in:u64,min_tokens_out
         let tokens=u64::try_from(crate::constant_product::tokens_for_quote(curve,net)?).map_err(|_|error!(PumpError::Truncation))?;
         (net_fees,tokens,net)
     };
-    let (amount,quote,fees,post,costs)=if tokens>curve.real_token_reserves{
+    let mut fitted;let (amount,quote,fees,post,costs)=if tokens>curve.real_token_reserves{
         let can_cross=v3_can_cross(&a.global,curve,&a.user.key());
 
 
@@ -937,7 +937,7 @@ pub fn buy_exact_quote(ctx:Context<SellV3>,spendable_quote_in:u64,min_tokens_out
         let estimate=if can_cross & (available>first){
             let (pool_base,pool_quote)={let base_reserves=a.associated_base_bonding_curve.amount;v3_pool_before(curve.real_quote_reserves,a.global.pool_migration_fee,base_reserves,is_sol,amount,quote)}?;
             estimate_post_complete(&curve.creator,pool_base,pool_quote,fees.protocol_fee_bps,fees.creator_fee_bps,rest,false)?}else{None};let (post,costs)=match estimate{
-                Some(mut post)=>fit_post_complete(a.global.buyback_basis_points,curve.is_mayhem_mode,&quote_fee,quote,curve_fees.protocol_fee,curve_fees.creator_fee,&mut post,spendable_quote_in)?,
+                Some(post)=>{fitted=post;fit_post_complete(a.global.buyback_basis_points,curve.is_mayhem_mode,&quote_fee,quote,curve_fees.protocol_fee,curve_fees.creator_fee,&mut fitted,spendable_quote_in)?},
                 None=>(None,costs),
             };
 
