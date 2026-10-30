@@ -20,7 +20,9 @@ tokens sit in equal diff runs. The frame is solved; the residuals are scheduling
 | Build | Bytes | Ratio | slots_diff | Official | unstripped sha256 |
 | --- | ---: | ---: | ---: | --- | --- |
 | main 2b85821 | 15,584 | 0.96854 | | 1027 / 276 | ec660de7 |
-| **c1 = `let fee=if .. {..} else {0}`** | **15,576** | **0.98332** | 43 | 1027 / 276, 0 losses, 0 raw losses | 651e83a1 |
+| c1 = `let fee=if .. {..} else {0}` | 15,576 | 0.98332 | 43 | 1027 / 276, 0 losses, 0 raw losses | 651e83a1 |
+| s1 = c1 + creator stored after `token_total_supply` | 15,576 | 0.98763 | | 1027 / 276, 0 losses | (ir build) |
+| **c2 = s1 + `virtual_quote_reserves`, `initial_virtual_quote_reserves`, `virtual_token_reserves` store order** | **15,576** | **0.98870** | 43 | 1027 / 276, 0 losses, 0 raw losses | 030d0d70 |
 
 ## Mechanism c1: the fee then-blocks must be created before the fee join
 
@@ -35,6 +37,27 @@ rustc creates LLVM blocks on first reference. With `let mut fee=0; if cond {..; 
 `let fee=if cond {..; creator_fee_bps.0} else {0};` the `0` target is the `else` arm, the then-block is
 codegened first (RPO), and the join is created after the fee checks, exactly the oracle order.
 Behaviour is unchanged; no `line!()` site moves (the `else {0};` replaces the closing brace line).
+
+## Mechanism s1/c2: init_curve store order
+
+With the `&mut BondingCurve` SSA pointer (main #2229) the SelectionDAG keeps the creator memcpy where the
+IR puts it, so the memcpy position now matters (IR-oracle scan over every position of the exit block:
+best right after the `token_total_supply` store, 0.98763; older ledger rows saying "byte-identical" were
+on bases without the separate pointer). Writing `bonding_curve.creator=creator;` after
+`token_total_supply` reproduces it. The original also stores both quote-reserve fields before loading
+`initial_virtual_token_reserves`; storing `virtual_quote_reserves` first, then
+`initial_virtual_quote_reserves`, then `virtual_token_reserves` reproduces that (0.98870).
+All are plain field stores of the same values; no `line!()` site in `init_curve`.
+
+## Remaining residuals (c2)
+
+- `mov r7,0`/`mov r2,0` swapped in the two Sol `Ok((Pubkey::default(),None,Sol))` blocks of
+  `validate_quote_mint`: IR oracle says the `bb112` join phi for the quote_mint first qword (SROA slice
+  `_84.sroa.31`, ptr-typed because it overlaps the Error payload) must come before the `QuoteSource` i8
+  phis (0.98870 -> 0.98978 on c2). Source spelling not found yet.
+- creator pointer allocated to r2 instead of r4, which moves the `name` pointer reload
+  (`ldxdw r2,[r10-0x718]`) from the top of the init_curve exit block to its use and swaps r2/r3/r4 in
+  ~34 instructions.
 
 ## Ledger
 
