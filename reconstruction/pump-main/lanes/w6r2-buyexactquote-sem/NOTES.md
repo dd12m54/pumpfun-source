@@ -60,6 +60,8 @@ frameoracle (`w4-frame-oracle`) on r6: two group mismatches, no other difference
 * Tried without success: deferred `let trade_fees;` assigned in each arm (db*, 0.42-0.79), `&fees` / `&post` variants of the emit
   helper (u3 0.9874, k1 0.9785), an execute wrapper (k2), `if let` / rebinding for the fit (e1 0.9806, e2 0.9853), llc oracles that
   move fees10's start marker (0.77-0.987), and `-stackcoloring-lifetime-start-on-first-use=false` (0.756).
+* llc oracle: ending the estimate payload right after its copy into post23 sends `_301` back to 0x90 (0.9947, 5 slots, fees10
+  only). Extending any single marked alloca's lifetime.end to the exit (46 tried) never gives exact.
 
 ## Trials (keys `0x1489f8-main-a7135a6-*-v1`)
 
