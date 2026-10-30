@@ -77,3 +77,6 @@ The early u128 error block (orig: sell_quote, tokens_for_quote, buy_fee_market_c
 late block (33 preds). Its re-separation is the next target, and probably why we are 64 B short.
 
 `let post_fill;` moved to just after the 590 check (p1, e22923cb): 0.85658, 18,528 B.
+
+### Merge review (main c39655328)
+Head 5e9a02804 (post_fill reserves-if tuple, ratio 0.89006) builds swap_hop at 18,520 B, which is further from the original 18,584 B than main (18,544 B), and it loses the 10 raw gains (1032/337, the same as main). It therefore fails merge acceptance. The merged source is restored to 8073709c6's `multi_hop_curve_swap.rs`. Against a fresh build of main c39655328 it scores 1032 normalized / 347 raw (+10 raw, 5,152 B, zero losses), and swap_hop is 18,584 B = original, ratio 0.85352, slots_diff 1023, calls 107/1. regen.sh reproduces ordered.ld. The 0.89006 variant is kept in history (5e9a02804) for later size work.
