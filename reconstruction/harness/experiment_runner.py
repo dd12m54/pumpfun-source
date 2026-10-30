@@ -91,6 +91,9 @@ def atomic_json(path, value):
 
 
 def artifacts(attempt):
+    output = attempt / 'output'
+    if output.is_symlink() or not output.is_dir():
+        raise ValueError('retained output must be a real directory')
     result = {}
     for path in [attempt / 'stdout.log', attempt / 'stderr.log', *sorted((attempt / 'output').rglob('*'))]:
         if path.is_symlink(): raise ValueError('output symlinks are unsupported')
@@ -117,7 +120,9 @@ def run_trial(source, command, destination, inputs=(), timeout=300):
             attempt = destination / name
             if previous.get('key') == key and previous.get('status') in ('pass', 'fail'):
                 try:
-                    valid = not attempt.is_symlink() and artifacts(attempt) == previous['artifacts']
+                    valid = (not attempt.is_symlink()
+                             and manifest(attempt / 'source') == admission['source']
+                             and artifacts(attempt) == previous['artifacts'])
                 except (OSError, ValueError): valid = False
                 if valid: return dict(previous, reused=True)
         attempt = destination / ('attempt-' + uuid.uuid4().hex)
