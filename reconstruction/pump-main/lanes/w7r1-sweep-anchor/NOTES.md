@@ -8,15 +8,15 @@ under `w7r1-sweep-anchor` (branch `swarm/w7r1-sweep-anchor`, cache
 
 Base: origin/main 7e26cbf (1027 normalized / 293 raw). Target 7,832 B, 39 calls.
 
-| metric | base (s6 on main) | t13 | t16 (PR head) |
-|---|---|---|---|
-| ratio (target_metric) | 0.88669 | 0.94951 | **0.95159** |
-| struct ratio (regs/stack masked) | 0.9615 | 0.9693 | |
-| cand bytes (orig 7832) | 7880 | 7856 | 7856 |
-| direct calls (orig 39) | 39 | 39 | 39 |
-| official normalized / raw | 1027 / 293 | 1027 / 293 | 1027 / 293 |
-| gains / losses | - | none / none | none / none |
-| unstripped sha256 | 0560a482.. | cdef3b75.. | see PR |
+| metric | base (s6 on main) | t13 | t16 | t30 (PR head) |
+|---|---|---|---|---|
+| ratio (target_metric) | 0.88669 | 0.94951 | 0.95159 | **0.99687** (slots_diff 30) |
+| struct ratio (regs/stack masked) | 0.9615 | 0.9693 | 0.9714 | |
+| cand bytes (orig 7832) | 7880 | 7856 | 7856 | **7832** |
+| direct calls (orig 39) | 39 | 39 | 39 | 39 |
+| official normalized / raw | 1027 / 293 | 1027 / 293 | 1027 / 293 | 1027 / 293 |
+| gains / losses | - | none / none | none / none | none / none |
+| unstripped sha256 | 0560a482.. | cdef3b75.. | 14de8a21.. | 17774048.. |
 
 ## Mechanism: the payout call goes through an inlined wrapper that takes the Anchor accounts by reference
 
@@ -65,3 +65,29 @@ stores a cross-block vreg, and the scheduler puts that store first. IR oracle: a
 the store after the timestamp (0.9495 -> 0.9516). In source, a different-width scrutinee
 (`as u32`; `as u64` is byte-identical) gives the same MIR switch with no CSE partner, so the event
 block gets its own zext: **0.95159**, with no losses.
+
+## t30: the rent helper is a plain function that the CGSCC inliner inlines (0.9516 -> 0.99687, 7832 B)
+
+This follows w6r1's conclusion that the original rent helper was a normal function, CGSCC-inlined
+after its own simplification. Getting there took three steps:
+
+1. **Warm call site.** The plain helper (t17) stayed out of line: its pre-inline call-site frequency
+   was 0.01602 of entry, below 2%, so it got the cold threshold of 45 (cost 210). The native check
+   `quote_mint == Pubkey::default()` is a memcmp `== 0` branch, and BPI's zero heuristic gives it
+   0.375. Moving that check into a plain `fn is_native_quote(&BondingCurve) -> bool` changes it.
+   The fn is not MIR-inlined, MIR JumpThreading still duplicates it per bucket, and LLVM inlines both
+   copies. Pre-inline, the branch is then on a call result (0.5), which puts the rent site at
+   0.0214-0.0244 (>= 2%), so the helper is inlined (39 calls). On its own, with the inline(always)
+   rent helper (t23), this change is byte-identical to t16. (t19/t21 also moved the vault check into
+   a nested helper. That raised the rent site too, but broke the layout.)
+2. **Rent as a temporary.** With `let rent = Rent::get()?; rent.minimum_balance(0)` (t22, 0.8067),
+   `rent`'s lifetime.end sits in the Ok/transfer merge block, which blocks JumpThreading of the Ok edge.
+   `let minimum = Rent::get()?.minimum_balance(0);` (t27; the same body as
+   `legacy_native_payments::ensure_rent_exempt`) threads Ok straight to the clone and places the
+   transfer block as in the original. Struct ratio 0.9833, but registers still differed (0.8161).
+3. **No argument promotion.** The CGSCC ArgumentPromotion turned `system_program: &Program` into a
+   by-value pointer. The caller then loaded `[a+0x30]` before Rent::get and spilled it, and register
+   assignment shifted everywhere. With `fn ensure_rent_exempt(a: &SweepFees, destination: &AccountInfo)`
+   reading `a.system_program` / `&a.payer` inside, `a` escapes into `transfer`, so nothing is
+   promoted: **0.99687, 7832 B (the original size), slots_diff 30**, 1027/293 with no losses.
+   t31 (`ensure_rent_exempt(a)`, which reads the recipient inside as well) gives 0.88159.
