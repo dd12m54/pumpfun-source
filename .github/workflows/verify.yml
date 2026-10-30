@@ -32,6 +32,10 @@ jobs:
             commands: |
               python -B research/fees-linux-fresh-rebuild-20261030/test_verify.py
               python -B -O research/fees-linux-fresh-rebuild-20261030/test_verify.py
+          - suite: swap-hop-residual-packet
+            commands: |
+              python -B research/swap-hop-residual-20261030/test_verify.py
+              python -B -O research/swap-hop-residual-20261030/test_verify.py
           - suite: analysis-packet-encoding
             commands: |
               python -B research/tooling-analysis-encoding-20261030/test_verify.py

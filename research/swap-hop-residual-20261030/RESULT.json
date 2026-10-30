@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "subject": "pump-main window 0x5b3b0 (multi_hop_curve::swap_hop) residual difference",
+  "base_commit": "f340311705849def836db9af242baa8abc1cc44c",
+  "environment": "native Linux x86_64, pinned platform-tools v1.44 (hybrid144), fastbuild of programs/pump at the base commit",
+  "score_at_base": {"normalized": 1033, "total": 1035, "raw": 192, "normalized_losses": []},
+  "candidate_unstripped_sha256": "6f5341422e7ff1937d371fe0602383ad12ac078a5f4607d66a55cc0c19232e44",
+  "candidate_sha256": "e69074c76567d6d02c6c8f3d4bdd453af7c51ca08311dad0b12dc7c7e5e285ce",
+  "window": {
+    "start": "0x5b3b0",
+    "symbol": "_ZN14pump_recovered15multi_hop_curve8swap_hop17h9fe043e3933f822cE",
+    "bytes": 18584,
+    "raw_diff_bytes": 125,
+    "normalized_diff_bytes": 47,
+    "clusters": [{"first_offset": "0x29f9", "last_offset": "0x2a84", "diff_bytes": 47}],
+    "positions": ["0x29f9","0x29fa","0x29fb","0x2a00","0x2a01","0x2a02","0x2a04","0x2a0a","0x2a0b","0x2a10","0x2a11","0x2a12","0x2a13","0x2a18","0x2a19","0x2a1a","0x2a1b","0x2a20","0x2a21","0x2a22","0x2a23","0x2a29","0x2a2a","0x2a32","0x2a33","0x2a3a","0x2a42","0x2a4a","0x2a52","0x2a5a","0x2a60","0x2a61","0x2a62","0x2a63","0x2a68","0x2a69","0x2a6a","0x2a6b","0x2a71","0x2a72","0x2a79","0x2a7a","0x2a7b","0x2a80","0x2a81","0x2a83","0x2a84"]
+  },
+  "identification": {
+    "call_site": "multi_hop_curve::complete_fill, called from programs/pump/src/multi_hop_curve_swap.rs (match on complete_fill(..) at the base commit)",
+    "moved_instructions": "ldxdw r2, [r10-0xb28]; add64 r2, 0x8  (the &a.fee_config argument: fee_config data pointer + 8-byte Anchor discriminator offset)",
+    "original_order": "the pair is emitted immediately after the whitelist memcmp call, before the ~9-field stack struct build that precedes the complete_fill call",
+    "recovered_order": "the pair is emitted after the struct build, immediately before the complete_fill call"
+  },
+  "experiments": [
+    {"name": "early-let-binding", "change": "bind let fee_config = &a.fee_config at the start of the enclosing if block and pass the binding", "result": "candidate binary byte-identical to the unmodified build (same sha256); residual unchanged"},
+    {"name": "let-then-match", "change": "split match complete_fill(..)? into let filled = complete_fill(..)?; match filled", "result": "regression: score 1028/1035 with 5 normalized losses (0x60058, 0x60260, 0x60468, 0x60670, 0x60878) and swap_hop changes size; reverted"}
+  ]
+}
