@@ -8,15 +8,15 @@ under `w7r1-sweep-anchor` (branch `swarm/w7r1-sweep-anchor`, cache
 
 Base: origin/main 7e26cbf (1027 normalized / 293 raw). Target 7,832 B, 39 calls.
 
-| metric | base (s6 on main) | t13 (this PR) |
-|---|---|---|
-| ratio (target_metric) | 0.88669 | **0.94951** |
-| struct ratio (regs/stack masked) | 0.9615 | see SUMMARY |
-| cand bytes (orig 7832) | 7880 | 7856 |
-| direct calls (orig 39) | 39 | 39 |
-| official normalized / raw | 1027 / 293 | 1027 / 293 |
-| gains / losses | - | none / none |
-| unstripped sha256 | 0560a482.. | cdef3b755098ccd815f4025c39df14de91fc3a14c7d0607ae1ae51107203c373 |
+| metric | base (s6 on main) | t13 | t16 (PR head) |
+|---|---|---|---|
+| ratio (target_metric) | 0.88669 | 0.94951 | **0.95159** |
+| struct ratio (regs/stack masked) | 0.9615 | 0.9693 | |
+| cand bytes (orig 7832) | 7880 | 7856 | 7856 |
+| direct calls (orig 39) | 39 | 39 | 39 |
+| official normalized / raw | 1027 / 293 | 1027 / 293 | 1027 / 293 |
+| gains / losses | - | none / none | none / none |
+| unstripped sha256 | 0560a482.. | cdef3b75.. | see PR |
 
 ## Mechanism: the payout call goes through an inlined wrapper that takes the Anchor accounts by reference
 
@@ -54,3 +54,14 @@ t01-t03 both by ref, tp in place (0.7488, attribute-independent); t04 base only 
 only (0.8716, struct +); t06 `&*a.base_mint` / t07 `.as_ref()` spellings = t01; t08 wrapper taking
 `&SweepFees` (0.6973); t09 `&Box<..>` param / t11 base_mint last (0.7981); t12 base ref + tp last
 (0.93708); t13 both ref + tp last (**0.94951**); t14 quote ref + tp last = t05; t15 direct + tp last = base.
+
+## t16: event bucket store order (`match creator as u32`)
+
+In the original, the bucket byte is stored after the timestamp (`ldxdw r1,[r10-0x318]; stxb
+[r10-0x1b0],r1`). On main it is stored first. The vault/validate dispatch `match creator as u8`
+emits `zext i1 %creator to i8` in a block that dominates everything after it, so GVN CSEs the
+event's `bucket: if creator{1}else{0}` (and the msg's `creator as u8`) into it. The event block then
+stores a cross-block vreg, and the scheduler puts that store first. IR oracle: an in-block zext moves
+the store after the timestamp (0.9495 -> 0.9516). In source, a different-width scrutinee
+(`as u32`; `as u64` is byte-identical) gives the same MIR switch with no CSE partner, so the event
+block gets its own zext: **0.95159**, with no losses.
