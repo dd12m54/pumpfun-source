@@ -3,8 +3,9 @@
 Target `0x1489f8` `trade::buy_exact_quote` (v3), original 7856 B. Base origin/main a7135a6a6 (1027 normalized / 276 raw):
 7872 B, ratio 0.85100 (llc masked 0.9675), 66/66 calls.
 
-**Best (u2): ratio 0.97218, 7864 B, masked 0.9953, 66/66 calls; official 1027 / 276 on a7135a6, and 1027 / 293 rebased on
-origin/main e3f3be8bb, no gains or losses either way.** Steps: y2 0.95643 (`68659d27`), z3 0.96537 (`8d5be622`), u2 0.97218 (`4bb7f0f6`).
+**Best (r6): ratio 0.98950, 7856 B (the original's size), 952/952 insns, 66/66 calls; only 10 stack-offset slots differ.
+Official 1027 / 293 on origin/main e3f3be8bb, no gains or losses.** Steps: y2 0.95643 (`68659d27`), z3 0.96537 (`8d5be622`),
+u2 0.97218 (`4bb7f0f6`), pb_b2 0.97428 (`3ed56f74`), r6 0.98950 (`2f3cb468`).
 
 ## Mechanism
 
@@ -34,13 +35,31 @@ origin/main e3f3be8bb, no gains or losses either way.** Steps: y2 0.95643 (`6865
    value and borrows them for `v3_emit_buy`; `fees`/`post` become SSA in MIR, CopyProp drops their markers, and the LLVM
    inliner adds entry markers. fees only: 0.96747; fees and post: 0.97218.
 
+7. v3_pool_before argument loads (pb_b2): call it from a block that first binds `base_reserves=a.associated_base_bonding_curve.amount`;
+   the loads are then scheduled as in the original (0.97428). The same binding at function scope changes nothing; of the six
+   orders for binding all three arguments, only b,r,m matches.
+8. v3_pool_before `?` branch shape (r6): BPF cannot reverse a branch after ISel, so the polarity comes from the IR block order.
+   Oracle: put the post/costs join block after the v3_pool_before Ok block -> 0.9947. Source: split the post-complete logic into
+   `let estimate=if cond{v3_pool_before..?; estimate_post_complete(..)?}else{None};` followed by
+   `let (post,costs)=match estimate{Some(mut post)=>fit_post_complete(..)?,None=>(None,costs)};`. The join is now created after
+   the Ok block: 7856 B, 0.98950.
+
 All helpers are appended at the end of `trade_v3.rs` (no line moves) and forward the same values (no runtime change).
 
-## Residuals (u2)
+## Residual (r6): stack colouring only
 
-* `[r7+0x30]` (associated_base_bonding_curve) load scheduled before the global/curve loads for `v3_pool_before` (2 slots).
-* `v3_pool_before` `?` error edge: ours `jeq +1; ja` vs original `jne` (1 extra insn: 7864 vs 7856 B).
-* final `fees` slot: ours shares the formatter group at -0x40, original shares the 24-byte `buf` group at -0x160.
+frameoracle (`w4-frame-oracle`) on r6: two group mismatches, no other differences:
+* `fees10` (the 32-byte `fees` that `v3_emit_buy` borrows) sits in our 64-byte group at 0x40 (formatter.i, formatter.i184, post23).
+  The original puts it in the 48-byte group at 0x160 (bufs, the estimate payload).
+* So `_301` (the v3_execute_buy result, 24 B) joins our 0x160 group. The original puts it at 0x90, because it overlaps fees10.
+  Fixing fees10 fixes both.
+* StackColoring sorts by size, so the 64-byte group gets the first chance at fees10. In the original fees10 therefore overlaps a
+  member of the 0x40 group. The formatters are nested inside the bufs, which share 0x160 with fees10, so the member has to be
+  `post23` (`Some(mut post)` around fit_post_complete). The 0x160 estimate payload must also be dead by then. Ours: fees10's first
+  use is the store at the merge, after post23 ends (LifetimeStartOnFirstUse).
+* Tried without success: deferred `let trade_fees;` assigned in each arm (db*, 0.42-0.79), `&fees` / `&post` variants of the emit
+  helper (u3 0.9874, k1 0.9785), an execute wrapper (k2), `if let` / rebinding for the fit (e1 0.9806, e2 0.9853), llc oracles that
+  move fees10's start marker (0.77-0.987), and `-stackcoloring-lifetime-start-on-first-use=false` (0.756).
 
 ## Trials (keys `0x1489f8-main-a7135a6-*-v1`)
 
@@ -67,5 +86,13 @@ All helpers are appended at the end of `trade_v3.rs` (no line moves) and forward
 | **z3** | `cost_total(&costs)` at both sites | 7872 | **0.96537** | kept |
 | u1 | `emit_exact_quote(fees by value, &post)` | 7872 | 0.96747 | |
 | **u2** | `emit_exact_quote(fees, post by value)` | 7864 | **0.97218** | kept |
+| pb_* | pre-bind the v3_pool_before args (6 orders) | 7864 | 0.970-0.974 | |
+| **pb_b2** | block-scoped `base_reserves` for v3_pool_before | 7864 | **0.97428** | kept |
+| q1-q4 | `!cond` / `&&` / `||` spellings of the post split | | = or 0.49-0.55 | |
+| r2/r3 | match on bool / `let mut split` | | = / 0.9396 | |
+| **r6** | estimate Option first, then match for the fit | **7856** | **0.98950** | kept |
+| u3/k1/k2 | emit/execute helper variants | | 0.79-0.987 | |
+| db* | deferred `trade_fees` per arm | | 0.42-0.79 | |
+| e1/e2 | `if let` / rebinding for the fit | | 0.9806 / 0.9853 | |
 
 Oracles: hoist8 0.8813; hoist8 + lifetime.end(_86) removal 0.9343; alloca order k1 (trio first) 0.9161; fees+net_fees last 0.9543.
