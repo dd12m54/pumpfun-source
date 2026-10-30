@@ -222,14 +222,14 @@ fn validate_quote_mint<'info>(accounts:&CreateV2<'info>,remaining_accounts:&[Acc
   (QuoteSource::Whitelisted,None)
  } else {
   let control=nested_create::quote_control(remaining_accounts.get(3))?;
-  match nested_create::control_account(control,mint_key) {
-   Ok(Some(reserves))=>(QuoteSource::Controlled,Some(reserves)),
-   Ok(None)=>{
-    let (reserves,depth)=nested_create::walk(remaining_accounts,&a.global)?;
-    (QuoteSource::Nested(depth),Some(reserves))
-   }
-   Err(e)=>return Err(e),
+  let found=nested_create::control_account(control,mint_key)?;
+  let mut source=QuoteSource::Controlled;
+  let mut reserves=found;
+  if found.is_none() {
+   let (r,depth)=nested_create::walk(remaining_accounts,&a.global)?;
+   reserves=Some(r);source=QuoteSource::Nested(depth);
   }
+  (source,reserves)
  };
 
 
