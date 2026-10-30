@@ -3,8 +3,8 @@
 Target `0x1489f8` `trade::buy_exact_quote` (v3), original 7856 B. Base origin/main a7135a6a6 (1027 normalized / 276 raw):
 7872 B, ratio 0.85100 (llc masked 0.9675), 66/66 calls.
 
-**Best (y2): ratio 0.95643, 7864 B, masked 0.9827, 66/66 calls; official 1027 / 276, no gains or losses.**
-Ledger attempt `68659d27` (key `0x1489f8-main-a7135a6-y2-v1`).
+**Best (u2): ratio 0.97218, 7864 B, masked 0.9953, 66/66 calls; official 1027 / 276 on a7135a6, and 1027 / 293 rebased on
+origin/main e3f3be8bb, no gains or losses either way.** Steps: y2 0.95643 (`68659d27`), z3 0.96537 (`8d5be622`), u2 0.97218 (`4bb7f0f6`).
 
 ## Mechanism
 
@@ -25,9 +25,22 @@ Ledger attempt `68659d27` (key `0x1489f8-main-a7135a6-y2-v1`).
    Either alone: 0.6941. Both: 0.95643. Leaf helpers (`fee_bps(&fees)`) are MIR-inlined and change nothing.
    No runtime change: the wrappers forward the same values.
 
-## Residuals (y2)
+5. Same lever for `costs` (z3): both `add(costs.0,costs.1)` sites go through a plain helper `cost_total(&costs)`, so the
+   `v3_buy_costs` payload word `[16]` is loaded once above the tag branch as in the original (0.95643 -> 0.96537).
+   One site alone: 0.9544 / 0.9497.
+6. Prologue lea (u2): llc oracle shows that unmarking the final `fees` (the `&fees` passed to `v3_emit_buy`) and giving it an
+   entry lifetime.start moves the prologue lea early as in the original (wave-4 sell_v3 mechanism). Source: the event tail
+   goes through a plain helper `emit_exact_quote(.., fees: TradeFees, .., post: Option<PostComplete>, ..)` that takes both by
+   value and borrows them for `v3_emit_buy`; `fees`/`post` become SSA in MIR, CopyProp drops their markers, and the LLVM
+   inliner adds entry markers. fees only: 0.96747; fees and post: 0.97218.
 
-Prologue lea late (-0x190), `fees` stack-colouring group (-0x160 group in orig), a few spill/reload orders.
+All helpers are appended at the end of `trade_v3.rs` (no line moves) and forward the same values (no runtime change).
+
+## Residuals (u2)
+
+* `[r7+0x30]` (associated_base_bonding_curve) load scheduled before the global/curve loads for `v3_pool_before` (2 slots).
+* `v3_pool_before` `?` error edge: ours `jeq +1; ja` vs original `jne` (1 extra insn: 7864 vs 7856 B).
+* final `fees` slot: ours shares the formatter group at -0x40, original shares the 24-byte `buf` group at -0x160.
 
 ## Trials (keys `0x1489f8-main-a7135a6-*-v1`)
 
@@ -50,5 +63,9 @@ Prologue lea late (-0x190), `fees` stack-colouring group (-0x160 group in orig),
 | x1-x3 | leaf `&TradeFees` helpers | | = base | MIR-inlined |
 | y1 / y3 | one plain wrapper | 7792 | 0.6941 | |
 | **y2** | both plain wrappers | 7864 | **0.95643** | kept |
+| z1 / z2 | `cost_total(&costs)` at one site | 7880 / 7888 | 0.9544 / 0.9497 | |
+| **z3** | `cost_total(&costs)` at both sites | 7872 | **0.96537** | kept |
+| u1 | `emit_exact_quote(fees by value, &post)` | 7872 | 0.96747 | |
+| **u2** | `emit_exact_quote(fees, post by value)` | 7864 | **0.97218** | kept |
 
 Oracles: hoist8 0.8813; hoist8 + lifetime.end(_86) removal 0.9343; alloca order k1 (trio first) 0.9161; fees+net_fees last 0.9543.
