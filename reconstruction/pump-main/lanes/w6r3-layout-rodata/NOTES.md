@@ -80,10 +80,23 @@ admin_cto lanes: the original is 472 B larger *without* those two inlined `to_st
 elsewhere. Keep the 296 check inside the holder arm, or any other form that leaves 307/312 below 2% BFI, or the vtable
 relocations come back.
 
+## Composition with PR #2168 (attempt `32ba9da6`)
+
+| build | normalized / raw | `.text` vs original | raw if only data bases moved | sha256 |
+| --- | ---: | ---: | ---: | --- |
+| main fb25fce + #2168 | 1030 / 336 | -40 | 553 | 3acec89a... |
+| main fb25fce + #2168 + this | 1030 / 336 (0 losses, 0 raw losses vs the row above) | -456 | 553 | b9ad5637... |
+
+admin_cto against the original after this change: the multiset of data lddw targets is equal (84 = 84, it was 86 before), and so is
+the direct-call count (157 = 157). The 472 B the original has on top are therefore plain instructions (no call, no
+data reference): register, stack and branch structure. Official raw from data rebasing (553 with #2168) needs the
+unmatched windows' total size delta at 0. Today that is create_v2 +8, admin_cto -472, swap_hop -40, sweep +48 (cand - orig).
+
 ## Attempts
 
 | id | trial | result |
 | --- | --- | --- |
 | `b9032d07` | whole-ELF non-text census (elfmap/dridn) | data identity complete except admin_cto's 2 relocations |
 | `4aed3843` | inline-remark + BFI oracle on validate | 307/312 at 2.2% BFI (cold threshold 2%), infeasible holder edge |
-| `f5a10147` | t01/t02: 296 check inside the holder arm | **kept**: to_string set = original, `.rel.dyn` 6147 = 6147, 0 losses |
+| `f5a10147`, `4e7f17e3` | t01/t02: 296 check inside the holder arm (6484b28, fb25fce) | **kept**: to_string set = original, `.rel.dyn` 6147 = 6147, 0 losses |
+| `32ba9da6` | merged with #2168 | 0 losses, raw 336 = 336 |
