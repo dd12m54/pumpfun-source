@@ -96,6 +96,25 @@ So the source has to deliver the Sol-path zero quote as something other than a s
 inline time (or make word0 integer-typed). Every zero spelling tried (Pubkey::default,
 new_from_array, system_program::ID, `let sol`, Default::default) folds to the same memset.
 
+### Residual A, follow-up (on d1)
+
+- Which zero write fixes it (opt -passes=sroa on the post-inliner module, Sol paths written as one
+  memset of N bytes from offset 16): N=32 (ours) and N=33 keep the ptr phi last; N=34 (also covering
+  the QuoteSource payload byte 49) or N=8 (word 0 only) give an order the llc oracle scores 1.00000
+  (0,18,31,47,51 / 0,18,31,51,47 / 0,18,51,31,47 all match). Equivalently, any slice touched by a
+  multi-partition memset is promoted in a later SROA round, so the source-tag slice must be delayed
+  together with the quote slice, or the quote slice must not be.
+- Why `Pubkey::default()` gives a 32-byte memset and no merge: at validate's MemCpyOpt the memset
+  (from `<[u8;32] as Default>::default` into a temp) is followed by `lifetime.end` of the Pubkey
+  temps before the tag stores. A const Pubkey (`system_program::ID`, z1) removes the temps and
+  MemCpyOpt merges the quote memset with the QuoteSource tag store into a 33-byte memset, but the
+  payload byte (undef for `Sol`) is never written, so it is still 33, not 34: byte-identical code.
+- Rejected source spellings (all on d1): wrapper fn around the validate body (0.70952), Sol tuple
+  chosen in execute for empty remaining accounts (0.6265/0.58777), shared `let sol` local in
+  validate (0.56/0.55), `Default` derive on QuoteSource with `Ok(Default::default())` (identical),
+  `#[repr(u8)]`, `#[repr(C,u8)]`, `#[derive(Clone,Copy)]` on QuoteSource (identical), const Sol tuple
+  in both/one return (0.949/0.950/0.976).
+
 ## Ledger
 
 Lane `w7r1-execute-inline`, keys `0x1e7c0-main-2b85821-*`.
