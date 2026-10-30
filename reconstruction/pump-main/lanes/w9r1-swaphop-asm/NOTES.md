@@ -42,3 +42,22 @@ The w7 u2 scoped key lost ratio on the old base (-3.2 pts) but gains on the &Con
 Raw 948 (611 raw gains) on a5 is an artifact: swap_hop +56 B cancels admin_cto's -56 B shift, so
 every function after swap_hop is at its original address. That will reverse once admin_cto grows,
 unless swap_hop reaches 18,584 B.
+
+## Result 3: mutation hill-climb on the &Context base (w7 hillclimb tool, mutations re-pooled)
+
+The w7r1-swaphop-hillclimb mutation set (84 mutations that were not inert on the old base and still apply), climbed on a5:
+
+| state | bytes | ratio | slots_diff |
+|---|---:|---:|---:|
+| a5 | 18,640 | 0.84043 | (size differs) |
+| + `qm-09`: `let cap = match crate::buy_fee_market_cap(c,&h.base_mint) { Ok(v) => v, Err(e) => return Err(e) };` | 18,592 | 0.8494 | |
+| + `completed-inline`: `if h.bonding_curve.real_token_reserves==0 {` (no `completed` binding) | **18,584 = orig** | **0.85352** | 1023 |
+
+On the old base both mutations did nothing useful. `qm-09` takes buy_fee_market_cap's error edge out of the shared u128-error
+return block. The original's early error-return block has exactly 3 predecessors (sell_quote, tokens_for_quote,
+buy_fee_market_cap); ours had 15, because the buy-arm errors were merged into it (see `errs2.py` census below).
+Official: 1031/347 (10 raw gains, no losses) vs fresh main.
+
+Error-return census (`errs2.py`: predecessors of each `stb [sret+0x5a],2` block): orig has early=3, late=32; a5 has
+early=15, late=20. The buy-arm error edges (net_quote, sub3, get_fees, 590 with_values, complete_fill, transfer_input,
+uqp_transfer_native, apply_buy, transfer_base_out) belong to the late block in the original.
