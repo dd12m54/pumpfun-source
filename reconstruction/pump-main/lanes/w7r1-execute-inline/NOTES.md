@@ -118,3 +118,7 @@ new_from_array, system_program::ID, `let sol`, Default::default) folds to the sa
 ## Ledger
 
 Lane `w7r1-execute-inline`, keys `0x1e7c0-main-2b85821-*`.
+
+## Merge status (2026-10-30)
+
+Source superseded by main #2386 (80393778f, w6r3-execute-ir), which reaches the same create_v2::execute result: merged PR side and main build to identical unstripped sha256 3ca6911a..., ratio 0.99892, 15,576 B, slots_diff 4, official 1032/347 with zero gains/losses. Recorded as notes only; programs/pump is main's.
