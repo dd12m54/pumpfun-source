@@ -97,3 +97,11 @@ build `sharing_update`/`collect_old`, and ours recomputes `holder & shared` at t
 | t27-t30 | sweep gate: `if let Some(None)=sharing_update`, `holder&&shared`, phi-built bool | t27 breaks inlining; others byte-identical |
 | llc | branch weight on the sweep.exit re-check (IR experiment) | object token ratio 0.2889 -> 0.4452 |
 | r1 | branch rebased on e491c5e95 | 27,128 B, 0.39103, 0 losses |
+
+## Merge review (notes-only)
+
+Re-measured on origin/main 2de98cc1d (after #2412, which restored admin_cto to 27,344 B):
+main 27,344 B / ratio 0.37637; main + this PR's source 27,144 B / ratio 0.39061; original 27,400 B.
+Score 1032/347 on both, 0 gains and 0 losses. Under size-first ranking the change moves admin_cto
+from 56 B to 256 B away from the original size, so the source change was not merged. Main's
+programs/pump is kept; this lane's notes and SUMMARY.json are kept as the record.
