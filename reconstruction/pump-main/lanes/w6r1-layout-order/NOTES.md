@@ -174,3 +174,8 @@ drops) were in symbol-hash order, but the original has the 1080-B one first. By-
 generic: a non-generic `&AccountInfo` version (t28) resolves `add_lamports` with `Self=AccountInfo` and loses
 0x969f0. 0 losses, and the line count of curve_quote_payments.rs is unchanged. The L block now matches the
 original order except buy_handler (LIS 480 of 481 paired). Model with buy_handler moved: 696 -> **702**.
+
+## Rebased on main 75b6547 (`17b90005`)
+1027/276 with 0 losses against main 75b6547; all 8 unmatched windows identical to main (create_v2 now
+0.851 at its original size, swap_hop 0.7332). `.text` -56 B vs the original (main: +456 B). Model raw once the
+8 match: 462 (our order), 702 (+ buy_handler), 1023 (full order). U hash order is worth +280 and D +41.
