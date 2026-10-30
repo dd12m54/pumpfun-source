@@ -1,0 +1,14 @@
+{
+ "lane": "w7r1-execute-hillclimb",
+ "targets": ["0x72810"],
+ "status": "target normalized-matched on main by w7r1-execute-sibling (#2309); this lane is analysis only",
+ "best_own": {"ratio": 0.91723, "cand_bytes": 7856, "calls": "39/39", "official": "1027/276, 0 losses", "mechanism": "quote_is_native(&curve) opaque native test warms the plain rent helper call site (0.016 -> 0.0214) so CGSCC inlines it; rent helper takes a:&SweepFees"},
+ "key_findings": [
+  "native test as an opaque call at inline time lifts the rent site above the 2% cold threshold",
+  "exact IR oracle on #2309: bb28 chain between admit1 check and admit2 block -> ratio 1.0",
+  "MIR JumpThreading threads every MIR-visible admit-result merge (40-43 calls)"
+ ],
+ "attempt_ids": ["0f32d801666d47e1879f3ae5f401db76","a6fe56928cd346559167e0fca79eb6c7","b44f7ec2ee064d5c9643cbb777737079","0a62f4aeca5c428e8c28159ffddccd85","5f66f8daeae34512911adfc13abbbfa9","e5286397a26e416f85ad66b3a49212fb","e1cf08c36501463ba1a8488311a05ae1"],
+ "rejected": ["15 native spellings keeping memcmp==0","map-closure rent bodies","rent helper arg reorders","16 admit helper bodies","9 arm call forms","15 MIR-level merge forms"],
+ "next_ideas": ["reuse scripts/gen2.py + batch.py + oracle2.py as a template for other unmatched windows"]
+}
