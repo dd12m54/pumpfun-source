@@ -3,16 +3,16 @@
 Base: PR #2298 head d11716091 (w7r1-execute-regsched: `pay_owned` wrapper taking the accounts
 struct, sweep 0.8867 -> 0.9495), itself on origin/main 2b85821 (1027 normalized / 276 raw).
 
-| metric | main 2b85821 | #2298 head | r5 | **m5 (head)** |
-|---|---|---|---|---|
-| ratio (target_metric) | 0.88669 | 0.94951 | 0.99479 | **0.99687** |
-| bytes (orig 7832) | 7880 | 7856 | 7832 | **7832** |
-| slots_diff | - | - | 35 | **30** |
-| calls (orig 37+2) | 37+2 | 37+2 | 37+2 | 37+2 |
-| full-mask diff lines (regs+stack masked) | 64 | 50 | 8 | 4 |
-| official normalized / raw | 1027 / 276 | 1027 / 276 | 1027 / 276 | 1027 / 276 |
-| gains / losses | - | none | none (raw 0xa868 kept) | none |
-| unstripped sha256 | ec660de7.. | | 279944c5.. | d442f56c22d0257d7b49064226eed621312684e0420396bad3d8a995fe78dea4 |
+| metric | main 2b85821 | #2298 head | r5 | m5 | **y3 (head)** |
+|---|---|---|---|---|---|
+| ratio (target_metric) | 0.88669 | 0.94951 | 0.99479 | 0.99687 | **1.0 (normalized match)** |
+| bytes (orig 7832) | 7880 | 7856 | 7832 | 7832 | 7832 |
+| slots_diff | - | - | 35 | 30 | **0** |
+| calls (orig 37+2) | 37+2 | 37+2 | 37+2 | 37+2 | 37+2 |
+| full-mask diff lines (regs+stack masked) | 64 | 50 | 8 | 4 | 0 |
+| official normalized / raw | 1027 / 276 | 1027 / 276 | 1027 / 276 | 1027 / 276 | **1028** / 276 |
+| gains / losses | - | none | none (raw 0xa868 kept) | none | gain 0x72810, no losses |
+| unstripped sha256 | ec660de7.. | | 279944c5.. | d442f56c.. | 143055ebf8675d2cf390bff9b4b9df14f3812c72f84773e95dcd52e34610106d |
 
 ## Mechanism (two sibling transplants)
 
@@ -48,8 +48,21 @@ struct, sweep 0.8867 -> 0.9495), itself on origin/main 2b85821 (1027 normalized 
    timestamp store). With an i32 (or usize) dispatch cast, the u8 casts are separate values and the event zext
    is local. Shared bucket variables, `creator.into()`, `u8::from` and if/else consts in the msg were all neutral or worse.
 
+5. **Normalized match (y3).** IR oracle on m5: moving the protocol-native clone chain (bb28..) in front of the
+   inlined helper's admit2 block makes llc's output identical to the original. So the last residual was only IR block
+   order. Writing both admits inline in the token arm (the buy_v2/sell_v2 sibling form) gives that order, but then the
+   join's recipient clone is cold. Before inlining, its frequency is 0.5*R + 0.25*T = 0.01869, which is below 2%, and
+   that gives 38 calls. The `opt cgscc(inline)` branch-weight probe found two branches that fix it: the creator-vault
+   compare, and the shared native re-test. A 50/50 vault branch is enough. The source writes the `require_keys_eq!`
+   expansion out on the same line 145, with the compare done by a plain `keys_eq(&Pubkey,&Pubkey)->bool`:
+   `if !keys_eq(&a.recipient.key(),&expected){return Err(error!(ConstraintSeeds).with_pubkeys((a.recipient.key(),expected)));}`.
+   This is the same quote_is_native mechanism applied to the vault branch. It is the same runtime code, with the
+   same error, line and pubkeys. The join is then 0.02136 and its clone is inlined (39 calls). The event block is
+   0.0145, so Event::data, the event clone, from_iter and exchange_malloc stay out of line. 0x72810 is
+   normalized-equal, slots_diff 0. The official score is 1028/276 with no normalized or raw losses.
+
 ## Residuals at m5 (full-mask diff 4 lines)
-- Only the admit branch polarity below.
+- Only the admit branch polarity below (fixed in y3).
 
 ## Residuals at r5 (full-mask diff 8 lines)
 - Admit branch polarity (+0xeb0, +0xf98): original `jeq r1,2,+1; ja err` then `jne r1,2,err`.
@@ -61,7 +74,7 @@ struct, sweep 0.8867 -> 0.9495), itself on origin/main 2b85821 (1027 normalized 
 8f8425ae (plain rent cost analysis), 9aa75942 (t2), 9b602cd5 (t3), b47ae727 (pay_owned verbatim),
 9a56e1e6 (r2), 426cb6e7 (r3/r4), 6206fdb5 (r6), 86cfdc23 (r5).
 
-Further ledger ids: 32791cdc (event bucket spellings), 336911f4 (admits inline: join 0.01869 cold), deba5927 (if/else and arm orders), cc7b9aba (admit helper plain), c2185914 (m5).
+Further ledger ids: 99701dc5 (block-order oracle), 8a82fd8a (y3 normalized match), 32791cdc (event bucket spellings), 336911f4 (admits inline: join 0.01869 cold), deba5927 (if/else and arm orders), cc7b9aba (admit helper plain), c2185914 (m5).
 
 Scripts (lane cache ~/.cache/pumpfun-reconstruction/lanes/w7r1-execute-sibling/scripts): trial.sh,
 bt.sh (pre-inline BFI listing), bpath.py (block freq + terminators), wprobe.py (branch-weight inline probe),
