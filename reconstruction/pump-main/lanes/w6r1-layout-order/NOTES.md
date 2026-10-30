@@ -82,4 +82,33 @@ directly), the body moves to the program position but grows 15512 -> 15520 B (0.
 two consecutive checked adds near buy_v2.rs:345 (original 0x13d130..0x13d198, `a+b` then `+c`) loses its
 second overflow check, plus scheduler swaps. buy_handler is private, so this is not the reachability
 effect. It also gives raw 0xa868 (the call-displacement coincidence window). This is the last L-order item
-worth +216 model raw; it belongs with the buy_handler lanes (diff in `$OUT/out/t05-bh.diff`).
+worth +217 model raw; it belongs with the buy_handler lanes (diff in `$OUT/out/t05-bh.diff`).
+
+IR (`$OUT/cap/t03` module form vs `cap/t13` program form, `tools/irent.py`): with rustc 1.79-dev, big
+`#[inline(always)]` bodies are inlined by LLVM, not by the MIR inliner (`.i` value names,
+`noalias.scope.decl`). trade::buy_body is already inlined that way into trade::buy. In program form the
+handler is LLVM-inlined into buy_v2, which adds:
+- 4 entry `lifetime.start`s for callee allocas that have no markers (`_413` 48 B, emit_cpi!'s `inner_data`
+  24 B and `authority_info` 48 B, `creator` 32 B)
+- `!noalias` scope metadata from the inlined `noalias ctx` parameter.
+buy_exact_quote_in_handler gets the same 4 entry starts, but its code does not change. In buy_handler the
+first 498 instructions are equal, and then block placement differs around the checked adds.
+
+| trial | result |
+| --- | --- |
+| t05 / t10 program fn through `execute` / direct call | 15520 / 0.97129, raw +0xa868 |
+| t12 OptionBool passed into the handler | same |
+| t13 `input` immutable + `let mut input=input` | same |
+| t14 / t15 `#[inline]` / no attribute on the handler | byte-identical to `#[inline(always)]` |
+| t19 `{emit!(ev);emit_cpi!(ev);}` block | same |
+| t18 `creator` local removed | 0.79378 (much worse) |
+| t17 (accidental) thin outlined buy_v2 wrapper around the outlined handler | raw +7 (U->D call windows), but only because the extra unit changes the L size: ballast, rejected |
+
+Handler lanes: measure the final buy_handler in program-fn form, since that is where the original has it.
+
+## Rebased on main 1ef1727 (`6db716dd`)
+After the rebase: 1027/276 with 0 losses against main 1ef1727, and the unmatched windows are identical
+to main (create_v2 0.82553, admin_cto 0.37637). `.text` -304 B vs the original. Data offsets: 1027 of 1027
+windows already point at the original in-section offsets (#2169 fixed the last `.data.rel.ro` pair).
+Model raw once the 8 match: 432 (our order), 649 (+ buy_handler), 654 (+ pay_out_native), 1023 (full
+original order). The 1023 - 654 gap is U/D symbol-hash order.
