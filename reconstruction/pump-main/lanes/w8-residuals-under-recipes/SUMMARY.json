@@ -1,0 +1,70 @@
+{
+ "lane": "w8-residuals-under-recipes",
+ "wave": 8,
+ "angle": "integration: combine wave-8 recipe changes with latest main and open source matches; test whether any residual of the unmatched windows closes under a different recipe",
+ "base": "origin/main fb25fce02 (fresh build 1030/295); combinations measured along the way on 2b8582135, e3f3be8bb and 6484b2837",
+ "targets": [
+  "0x13f630",
+  "0x13b9b8",
+  "0x80df8",
+  "0x72810",
+  "0x1e7c0",
+  "0x5b3b0",
+  "0x1489f8",
+  "0x22a10"
+ ],
+ "best_result": {
+  "best_combination": "main 6484b2837 + #2225 + #2269 + #2272 + #2309 = 1031/296 (0 losses); on main fb25fce02, #2309 alone reaches the same 1031/296 (main absorbed the other parts via #2251 #2346 #2347 #2348)",
+  "branch_now": "main fb25fce02 + regenerated ordered.ld (score-neutral 1030/295, 0 losses; regen.sh reproduces the committed script again) + analysis",
+  "branch_unstripped_sha256": "e3abe708e5603ceedb8f4dbeaa9f00d3d4a8bba99c8d36cc4837985e97ede8c3",
+  "recommendation": "merge #2309 (sweep::execute normalized, raw +1 0x65eb0, create_v2 at original size)",
+  "pr": "https://github.com/lalalune/pumpfun-source/pull/2288"
+ },
+ "combination_table": {
+  "main": "1027/276",
+  "+#2251": "1027/293",
+  "+#2225": "1028/276",
+  "+#2269": "1028/276",
+  "+#2264 (superseded by #2269)": "1027/276 (0x13f630 at size, 6 slots)",
+  "#2251+#2225+#2269": "1029/293",
+  "#2251+#2225+#2269+#2168": "1029/293 (no extra raw at today's sizes)",
+  "#2251+#2225+#2269+#2272": "1030/293",
+  "main 6484b2837": "1027/293",
+  "6484 + #2313": "1027/293",
+  "6484 + #2225+#2269+#2272": "1030/295",
+  "6484 + #2225+#2269+#2272+#2313": "1030/296",
+  "6484 + #2225+#2269+#2272+#2309": "1031/296",
+  "main fb25fce02": "1030/295",
+  "fb25 + #2309": "1031/296",
+  "fb25 + everything combined + #2309": "1031/296",
+  "fb25 + regenerated ordered.ld": "1030/295"
+ },
+ "recipe_findings": [
+  "No zero-loss recipe changes any of the 8 residual windows: in the zero-loss builds of w8-toolchain-version (real Linux v1.44, v1.45 hybrid, host shims) and w8-profile-flags (LTO fat/thin/off, inline/cross-crate thresholds, vectorizers), the 8 windows are byte-identical in size, ratio and slots",
+  "20 global rustc flag builds: every flag that changes codegen costs matched windows (debuginfo=2: 82 losses; mir-opt-level 3/4: 42/316; inline-mir-threshold=100: 21; share-generics: 492; ldstmemcpy-glue 2/8: ~490; disable-sbf-peephole: 29); debuginfo=1/line-tables, mir-opt-level=1 and inline-mir=no overflow the 4 KiB frame; target-cpu v1/v2 fail to link; the BPF-named memcpy and speculation options are byte-identical no-ops on SBF",
+  "llc oracle (bitcode + captured rust-lld args, about 10 s per option, control 1023/1027 with the targets identical to rustc): of 71 codegen options, 36 are complete no-ops (the whole MachineScheduler family, because SBF uses the SelectionDAG list scheduler) and 35 cost 1 to 572 matched windows; none matches a target",
+  "llc oracle fidelity: 4 windows (0x2bf18 0x33c50 0x34558 0x567d8) differ only by use-list order, which bitcode does not preserve; residual ties of this kind can only be driven by the IR, not by options",
+  "source hint: -tail-dup-size=3 moves 0x1489f8 trade::buy_exact_quote from 0.851 to 0.915 at unchanged size. Its output has the same 1021 instructions; only greedy-RA ties flip (r6<->r9 for the 5th argument, as the original has it, plus r8/r6 and r7/r9 pairs), because early tail duplication changes the pre-RA CFG. Part of the 0x1489f8 residual is therefore an RA tie that reacts to pre-RA CFG shape (ledger 15b19b83)",
+  "root-crate-only middle-end/MIR options (34 builds: GVN hoist/sink/memdep/PRE, simplifycfg hoist/sink, phi folding, jump threading, inline hint/cold thresholds, merge-functions, 14 MIR pass toggles): every one either leaves all code byte-identical or costs matched windows; the only zero-loss change to a target (MIR -UnreachablePropagation on sweep::execute) moves it further away"
+ ],
+ "attempts": "ledger lane w8-residuals-under-recipes: recipe-global-flag 20, recipe-llc-option-oracle 73, recipe-root-crate-flag 34, recipe-crate-metadata 2 (crate-type cdylib-only: 405 losses; edition 2018: does not compile), integration-combo 15",
+ "rejected_mechanisms": [
+  "any global RUSTFLAGS / -Z / llvm-args recipe for the residual windows",
+  "target-cpu v1/v2",
+  "debuginfo builds",
+  "#2168 on top of the combination (no extra raw at today's sizes; conflicts with #2225/#2269 program-fn form)"
+ ],
+ "unresolved_residuals": [
+  "0x1e7c0 create_v2::execute at size, 42 slots (with #2309)",
+  "0x5b3b0 swap_hop -40 B",
+  "0x1489f8 trade::buy_exact_quote at size, 10 slots",
+  "0x22a10 admin_cto::execute -56 B",
+  "512 B ensure_rent_exempt wrapper"
+ ],
+ "next_ideas": [
+  "Keep folding new zero-loss source matches into this branch; once the 5 remaining sizes match, switch genld.py to --mode all (sibling model: 1022 raw at fixed sizes)",
+  "0x1489f8: the RA ties flip with the pre-RA CFG (tail-dup-size=3 oracle gives the original r9 for the 5th argument); try source spellings that add or merge a tiny block near the entry or the error joins, and check them with the llc oracle",
+  "Recipe search space is exhausted for codegen; remaining build-input value is layout only (link script) and lock/host hash order (w8-toolchain-version, w8-symhash-metadata)"
+ ],
+ "exhausted": true
+}

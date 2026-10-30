@@ -134,7 +134,7 @@ SECTIONS
     *pump_recovered.pump_recovered.*-cgu.0.rcgu.o(".text._ZN85_$LT$anchor_lang..accounts..account..Account$LT$T$GT$$u20$as$u20$core..fmt..Debug$GT$3fmt17h545171893f174f97E")
     *pump_recovered.pump_recovered.*-cgu.0.rcgu.o(".text._ZN88_$LT$anchor_lang..accounts..signer..Signer$u20$as$u20$anchor_lang..Accounts$LT$B$GT$$GT$12try_accounts17h0e2047cb811e7515E")
     *pump_recovered.pump_recovered.*-cgu.0.rcgu.o(".text._ZN97_$LT$anchor_lang..accounts..sysvar..Sysvar$LT$T$GT$$u20$as$u20$anchor_lang..Accounts$LT$B$GT$$GT$12try_accounts17hc8e252afadc46ab6E")
-    *pump_recovered.pump_recovered.*-cgu.0.rcgu.o(".text._ZN98_$LT$alloc..vec..Vec$LT$T$GT$$u20$as$u20$alloc..vec..spec_from_iter..SpecFromIter$LT$T$C$I$GT$$GT$9from_iter17h0e046d6f43e74065E")
+    *pump_recovered.pump_recovered.*-cgu.0.rcgu.o(".text._ZN98_$LT$alloc..vec..Vec$LT$T$GT$$u20$as$u20$alloc..vec..spec_from_iter..SpecFromIter$LT$T$C$I$GT$$GT$9from_iter17h05834ec09ece64f1E")
     *pump_recovered.pump_recovered.*-cgu.0.rcgu.o(".text._ZN99_$LT$anchor_lang..accounts..account..Account$LT$T$GT$$u20$as$u20$anchor_lang..Accounts$LT$B$GT$$GT$12try_accounts17h179bcc691706aaffE")
     *pump_recovered.pump_recovered.*-cgu.0.rcgu.o(".text._ZN99_$LT$anchor_lang..accounts..account..Account$LT$T$GT$$u20$as$u20$anchor_lang..Accounts$LT$B$GT$$GT$12try_accounts17h0774583de916150dE")
     *pump_recovered.pump_recovered.*-cgu.0.rcgu.o(".text._ZN99_$LT$anchor_lang..accounts..account..Account$LT$T$GT$$u20$as$u20$anchor_lang..Accounts$LT$B$GT$$GT$12try_accounts17h377e01c42e45264bE")
