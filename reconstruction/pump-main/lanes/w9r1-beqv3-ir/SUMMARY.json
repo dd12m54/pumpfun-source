@@ -1,0 +1,5 @@
+{"lane":"w9r1-beqv3-ir","targets":["0x1489f8"],"goal_reached":false,"target_status":"normalized match already provided by PR #2397 (verified independently, 1032/337, zero losses)",
+ "best_metrics":{"normalized":1032,"raw":337,"losses":[],"raw_losses":[],"pr_sha256":"6de8bcdcb64b4eae986d0e75535ce163cc5307351f77f68eeb4bd31dddd203ef","base_sha256":"9467216956a4a1da7ae16aca9d258f8bf39a8475818e6cc086f1ad28e72979c0"},
+ "attempts":["independent rebuild of PR #2397 vs fresh main (duplicate of ledger 6201634e30b64f8b9ed21a2f5f3857e1, not re-recorded)"],
+ "rejected_mechanisms":[],"unresolved":["0x1489f8 raw needs the -96 B .text shift from admin_cto (-56) and swap_hop (-40) removed"],
+ "next_ideas":["merge #2397 (or #2377, not both)","move effort to admin_cto 0x22a10 and swap_hop 0x5b3b0 sizes to unlock raw"]}
