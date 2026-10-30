@@ -587,9 +587,9 @@ pub fn transfer_input<'info>(a: &MultiHopCurve<'info>, previous: Option<&Previou
 
 
             let base = u64::try_from(crate::constant_product::tokens_for_quote(c,q)?).map_err(|_| error!(PumpError::Truncation))?;
-            if base == 0 { return Err(error!(PumpError::BuyZeroAmount).with_values((base,0))); }
+            require_gt!(base,0,PumpError::BuyZeroAmount);
 
-            let reserves = c.real_token_reserves; let (base_amount,quote_amount,pf,cf,post_out) = if base > reserves {
+            let reserves = c.real_token_reserves; let (base_amount,quote_amount,pf,cf) = if base > reserves {
 
 
 
@@ -600,9 +600,9 @@ pub fn transfer_input<'info>(a: &MultiHopCurve<'info>, previous: Option<&Previou
                 if let Some((fees, quote, post)) = complete_fill(&a.global,&a.fee_config,fee_config_len,cap,c,
                     &h.associated_base_bonding_curve,flag,p_rate,c_rate,trade_amount)? {
                     post_fill=Some(post);
-                    (reserves,quote,fees.protocol_fee,fees.creator_fee,post.base_out)
-                }else{post_fill=None;(reserves,q,pf,cf,0)}
-            }else{post_fill=None;(base,q,pf,cf,0)};
+                    (reserves,quote,fees.protocol_fee,fees.creator_fee)
+                }else{post_fill=None;(reserves,q,pf,cf)}
+            }else{post_fill=None;(base,q,pf,cf)};
 
 
 
@@ -621,7 +621,7 @@ pub fn transfer_input<'info>(a: &MultiHopCurve<'info>, previous: Option<&Previou
 
 
 
-            let raw_output = base_amount.checked_add(post_out).ok_or_else(|| error!(PumpError::Overflow))?;
+            let raw_output = base_amount.checked_add(match &post_fill{Some(p)=>p.base_out,None=>0}).ok_or_else(|| error!(PumpError::Overflow))?;
 
 
 // layout-pad(45): aligns the next Source site with the original line
