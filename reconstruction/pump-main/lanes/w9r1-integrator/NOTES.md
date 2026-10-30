@@ -82,3 +82,12 @@ The branch carries #2403's multi_hop_curve_swap.rs and reverts #2214's one-line 
 (line count unchanged). elf_meta_diff: .text -56, every other difference follows from .text,
 no build-input differences. unstripped sha256 3ca6911a64bdfb6251603f60d69ae6c8919af03d801b82b72fcc3e0dd6c8ec4d.
 Ledger 0e0ffcb44d4c4ff19327d84acc31d5f2, 7230782a35e940078c6b52c1de92a5ea.
+
+## Round 3 (main c2f54a62b, no programs/pump/src change since 7ca3235dc)
+
+#2403 head 5e9a02804 adds the post_fill reserves-if tuple: swap_hop 0.89006 but 18520 B
+(-64). Removing single v2 hunks from it (rN, rE, rF1, rU, rC, rK) and the size-balancing
+pairs: only variants with rC (`?` back on buy_fee_market_cap) reach 18584 B, at 1282..1631
+slots (rC alone 0.87713/1282). None beats #2403 v2 (8073709c6: 18584 B, 1023 slots), so the
+branch keeps v2 by the size-first, slots-second metric. The v3 ratio gain is real; it needs
++64 B elsewhere to be adoptable.
