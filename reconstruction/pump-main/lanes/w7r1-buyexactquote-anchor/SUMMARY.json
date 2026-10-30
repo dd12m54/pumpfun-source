@@ -1,0 +1,11 @@
+{
+  "lane": "w7r1-buyexactquote-anchor",
+  "targets": ["0x1489f8"],
+  "base": "origin/main 5bd9e1b53",
+  "best": {"source": "open PR #2377 head 7cfa6bf07 (not this lane)", "normalized": 1032, "raw": 296, "losses": [], "raw_losses": [], "target": {"ratio": 1.0, "slots_diff": 0, "cand_bytes": 7856, "normalized_equal": true, "raw_equal": false}, "unstripped_sha256": "ac19f50f8ae5f90bb976ac071b7422231e1b17da5f1260d4d91f054388ae9d2c"},
+  "main_alone": {"normalized": 1031, "raw": 296, "target_ratio": 0.9895, "target_slots_diff": 10},
+  "attempts": ["0x1489f8-main-5bd9e1b-verify-pr2377-on-main-v1"],
+  "rejected_mechanisms": [],
+  "unresolved_residuals": ["0x1489f8 raw: call displacements depend on global layout (candidate 0x85f80 vs original 0x1489f8)"],
+  "next_ideas": ["merge #2377; move swarm effort to 0x1e7c0, 0x22a10, 0x5b3b0 and to link-order work for raw"]
+}
