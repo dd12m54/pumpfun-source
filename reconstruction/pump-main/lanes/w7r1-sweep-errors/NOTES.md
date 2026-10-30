@@ -1,7 +1,12 @@
-# w7r1-execute-errors: 0x72810 `sweep::execute` (error-path / branch-structure lane)
+# w7r1-sweep-errors: 0x72810 `sweep::execute` (error-path / branch-structure lane)
 
-Base: origin/main 2b85821 (s6 sweep). Baseline build: 1027/1035 normalized, 293 raw (scored
-against its own score.json). Target: original 7,832 B, 39 direct calls.
+Assigned lane name: `w7r1-execute-errors`. A create_v2::execute lane got the same name and
+recreated/used the same worktree, branch and cache dir, so this lane works under
+`w7r1-sweep-errors` (branch `swarm/w7r1-sweep-errors`, cache
+`~/.cache/pumpfun-reconstruction/lanes/w7r1-sweep-errors`). Ledger rows use
+`--lane w7r1-execute-errors` and keys `0x72810-main-2b85821-*`.
+
+Base: origin/main 7e26cbf (s6 sweep; trials started on 2b85821, identical programs/pump/src). Baseline build: 1027/1035 normalized, 293 raw. Target: original 7,832 B, 39 direct calls.
 
 | metric | base (s6) | h5p (this PR) |
 |---|---:|---:|
@@ -11,7 +16,7 @@ against its own score.json). Target: original 7,832 B, 39 direct calls.
 | fullmask diff lines (regs, stack offsets, jumps masked; llc oracle) | 64 | **22** |
 | official normalized / raw | 1027 / 293 | 1027 / 293 |
 | gains / losses | - | none / none |
-| unstripped sha256 | ec660de7.. | 284841176f337f5d36d63984eae5c2e9e5ab16c5b84d82ae8223803d76366889 |
+| unstripped sha256 | 0560a482.. | dfc8eb87b1eb7ae1a0a48aed4230b3897a1eee81741ccd3833e20170a01b4d73 |
 
 ## Mechanism
 
