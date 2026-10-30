@@ -164,3 +164,13 @@ original's order exactly if the root crate name is 10 characters shorter (`pump`
 `_ZN4core3ptr43drop_in_place<pump::migrate::Migrate>` falls between `..42..std::io::Error` and
 `..46..anchor_lang::Error`. That is more evidence that the original crate was named `pump`. The model value is only +3,
 and a rename needs Cargo identity and harness changes, so it was not attempted.
+
+## Kept: pay_out_native pair in def order (`raw-main-1ef1727-pay-out-native-owned-fn-before-generic-v1`)
+
+The two instances of the generic `pay_out_native` (856 B for `&AccountInfo`, 1080 B for `AccountInfo` with Rc
+drops) were in symbol-hash order, but the original has the 1080-B one first. By-value callers (multi_hop
+`to.clone()`/`to_account_info()`, trade_v3 buyback, `transfer_to_owned`) now call a non-generic
+`pay_out_native_owned`, defined just before the generic. Def order puts it first. By-reference callers keep the
+generic: a non-generic `&AccountInfo` version (t28) resolves `add_lamports` with `Self=AccountInfo` and loses
+0x969f0. 0 losses, and the line count of curve_quote_payments.rs is unchanged. The L block now matches the
+original order except buy_handler (LIS 480 of 481 paired). Model with buy_handler moved: 696 -> **702**.
