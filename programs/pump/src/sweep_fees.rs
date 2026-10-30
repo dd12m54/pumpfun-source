@@ -161,10 +161,10 @@ pub fn execute(ctx:Context<SweepFees>,creator:bool)->Result<()>{
   }
   (false,true)=>{}
  }
- crate::trade::quote_payments::transfer_to_owned(
-  native,a.base_mint.as_ref().as_ref(),a.bonding_curve.as_ref(),
-  a.recipient.to_account_info(),amount,&a.quote_token_program,
-  a.quote_mint.decimals,a.quote_mint.as_ref().as_ref(),
+ pay_owned(
+  native,&a.base_mint,a.bonding_curve.as_ref(),
+  a.recipient.to_account_info(),amount,a,
+  &a.quote_mint,
   if native{None}else{Some(a.associated_quote_bonding_curve.as_ref())},
   if native{None}else{Some(a.associated_quote_recipient.as_ref())},
   ctx.bumps.bonding_curve,
@@ -181,3 +181,4 @@ fn ensure_rent_exempt<'info>(system_program:&Program<'info,System>,payer:&Signer
  let minimum=Rent::get().map(|rent|rent.minimum_balance(0))?;
  if destination.lamports()<minimum{crate::legacy_buy::native_payments::transfer(system_program.as_ref(),payer,destination,minimum)}else{Ok(())}
 }
+fn pay_owned<'info>(native:bool,base_mint:&InterfaceAccount<'info,anchor_spl::token_interface::Mint>,curve:&Account<'info,BondingCurve>,destination:AccountInfo<'info>,amount:u64,a:&SweepFees<'info>,quote_mint:&InterfaceAccount<'info,anchor_spl::token_interface::Mint>,quote_source:Option<&AccountInfo<'info>>,quote_destination:Option<&AccountInfo<'info>>,bump:u8)->Result<()>{crate::trade::quote_payments::transfer_to_owned(native,AsRef::<AccountInfo<'info>>::as_ref(base_mint),curve,destination,amount,&a.quote_token_program,quote_mint.decimals,AsRef::<AccountInfo<'info>>::as_ref(quote_mint),quote_source,quote_destination,bump)}
