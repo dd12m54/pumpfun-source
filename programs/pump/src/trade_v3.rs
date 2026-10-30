@@ -880,7 +880,7 @@ pub fn buy_exact_quote(ctx:Context<SellV3>,spendable_quote_in:u64,min_tokens_out
 
     require_gt!(min_tokens_out,0,PumpError::BuyZeroAmount);
     require_gt!(spendable_quote_in,0,PumpError::BuyNotEnoughSolToCoverFees);
-    let (is_sol,quote_fee);(is_sol,quote_fee)=check_quote(a)?;
+    let (is_sol,quote_fee)=check_quote(a)?;
     let available=crate::transfer_fee_recovered::post_fee_amount(&quote_fee,spendable_quote_in)?;
 
 
@@ -888,7 +888,7 @@ pub fn buy_exact_quote(ctx:Context<SellV3>,spendable_quote_in:u64,min_tokens_out
 
 
 
-    require_neq!(available,0,PumpError::BuyNotEnoughSolToCoverFees);
+    require_gt!(available,0,PumpError::BuyNotEnoughSolToCoverFees);
     let fees=v3_trade_fees(a,available)?;
     let curve=&a.bonding_curve;
     let (net_fees,tokens,net)=if a.global.whitelist_pda==a.user.key(){
