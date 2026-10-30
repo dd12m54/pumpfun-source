@@ -74,6 +74,17 @@ Everything else in the window is identical; the IR oracle on c2 plus the phi fix
    post-validate blocks, 674 block moves), branch weight, greedy knob or copy probe reproduces it with
    the load late: the cause is a global greedy ordering effect.
 
+## Debug llc (reusable)
+
+`~/.cache/pumpfun-reconstruction/llvm-dbg/build/bin/llc` is an assertions-enabled build of
+anza-xyz/llvm-project `08aedd64` (the llvm-project submodule of the platform-tools v1.44 rust commit),
+targets BPF+SBF. It produces byte-identical code for `create_v2::execute` and supports
+`-debug-only=regalloc`. Trace on c2: `name` (%135) is deferred to RS_Split and region-split for
+candidate r0 after the creator pointer took r2; in the exit block it is "stack-in, reload before use".
+In the `name.len()`-early variant its interval starts before the creator pointer ends and evicts it
+through its r2 hint (the `String::clone` argument), giving the original pattern. The exit-entry
+bundle choice is a spill-placement tie (pred-edge frequency sum = exit frequency 0.033351).
+
 ## Ledger
 
 Lane `w7r1-execute-frame`, dedupe keys `0x1e7c0-main-2b85821-*`.
