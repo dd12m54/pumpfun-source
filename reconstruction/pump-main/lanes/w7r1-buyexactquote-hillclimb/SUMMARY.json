@@ -1,0 +1,49 @@
+{
+ "lane": "w7r1-buyexactquote-hillclimb",
+ "targets": [
+  "0x1489f8"
+ ],
+ "base": "origin/main fb25fce02 (1030/295)",
+ "best": {
+  "trial": "fitv",
+  "target": {
+   "bytes": 7856,
+   "ratio": 1.0,
+   "slots_diff": 0,
+   "normalized_equal": true,
+   "raw_equal": false
+  },
+  "official": {
+   "normalized": 1031,
+   "raw": 295,
+   "gains": [
+    "0x1489f8"
+   ],
+   "losses": [],
+   "raw_losses": []
+  },
+  "unstripped_sha256": "f8c310ff04f0e671f4f76ba69ba1a36535977f2aa05a8ac41fdb30b2f95d3751"
+ },
+ "mechanism": "Some(post)=>fit_owned(..,post,..): plain helper taking PostComplete by value (SSA in MIR, helper alloca markers from the LLVM inliner) fixes the fees10/_301 StackColoring residual",
+ "attempts": [
+  "0x1489f8-main-fb25fce-hc-fitf-v1",
+  "0x1489f8-main-fb25fce-hc-fitfv-v1",
+  "0x1489f8-main-fb25fce-hc-fitv-v1",
+  "0x1489f8-main-fb25fce-hc-fitvv-v1"
+ ],
+ "rejected": [
+  "fitf: helper with &curve_fees (=base)",
+  "fitfv: helper with curve_fees by value (=base)"
+ ],
+ "unresolved": [
+  "target raw_equal false (not required for normalized membership)"
+ ],
+ "next_ideas": [
+  "raw match of 0x1489f8: inspect remaining raw differences (call displacements / relocations)",
+  "apply the same by-value helper lever to other StackColoring residuals"
+ ],
+ "tools": [
+  "hc.py",
+  "muts.py"
+ ]
+}
