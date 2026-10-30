@@ -59,6 +59,7 @@ jobs:
               python -B reconstruction/harness/test_short_window_ranking.py
               python -B reconstruction/harness/test_applicability_evidence_paths.py
               python -B reconstruction/harness/test_diagnostic_range_boundaries.py
+              python -B reconstruction/harness/test_stack_access_isa.py
               python scripts/test_build_source_manifest.py
               python -I -B tests/test_manifest_nested_target.py
               python scripts/test_core_linux_v144_retention.py
@@ -87,6 +88,7 @@ jobs:
               python research/tooling-terminal-error-patterns-20261030/verify.py
               python research/tooling-token-program-constant-detector-20261029/verify.py
               python -B reconstruction/capture-rpc-retry/test_capture.py
+              python -B reconstruction/verification/donation-relay-stateful/test_stateful.py
           - suite: host-fragments
             commands: |
               python -B -m unittest discover -s tests -p 'test_global_*_captured.py' -v
