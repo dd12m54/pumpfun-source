@@ -541,7 +541,7 @@ Ok(())
 // layout-pad
 // layout-pad
 }
-#[inline(never)]
+#[inline(always)]
 fn buy_exact_quote_in_handler<'info>(ctx:Context<'_,'_,'_,'info,BuyV2<'info>>,input:u64,limit:u64,partial:bool)->Result<()>{
  let a=&mut *ctx.accounts;let fee_recipient=&a.fee_recipient;let buyback_fee_recipient=&a.buyback_fee_recipient;let (base_token_program,base_mint)=(&a.base_token_program,&a.base_mint);
 // layout-pad(220): aligns the next Source site with the original line

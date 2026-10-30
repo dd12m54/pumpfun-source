@@ -45,3 +45,41 @@ buy_exact_quote_in_handler, sell_v2) can call it directly. The wrapper (`size ==
 
 Before this change, fixing all 8 unmatched windows would still have left `.text` 512 B long and every
 data window non-raw. Unstripped sha256 8e56a1bcc1f85140...
+
+## Kept: four handler bodies at the #[program] position (`2a9710aa`, `cbded140`, `401dc71c`)
+
+The original keeps the v2/v3 handler bodies inside the #[program] module run (between `create` and
+`buy`), with their closures at the module position: the module fn is inlined into an outlined program
+fn. Four of the five now sit there with normalized-identical bodies:
+
+| program fn (`#[inline(never)]`) | inlined body (`#[inline(always)]`) | window | body sha1 (normalized) |
+| --- | --- | --- | --- |
+| `sell_v3` | `pub(crate) trade::sell` | 0x14a8a8 (matched) | cef4e59f, unchanged |
+| `buy_v3` | `pub(crate) trade::buy` | 0x147ba0 (matched) | dd61133e, unchanged |
+| `buy_exact_quote_in_v3` | `pub(crate) trade::buy_exact_quote` | 0x1489f8 (unmatched) | 9b71a475, unchanged (0.66033) |
+| `buy_exact_quote_in_v2` | private `buy_exact_quote_in_handler` (via `buy_v2::execute`) | 0x13f630 (unmatched) | 949506f1, unchanged (0.99635) |
+
+**Why the v3 program-fn form used to fail** (w3-raw-layout `f2409d8a`, layout-order-census `310c3a1f`:
+loses 0x147ba0 and 0x859b0 `v3_emit_buy`): an `#[inline(always)] pub fn` in a crate that is also a `lib`
+is inlinable by downstream crates, so every private item it calls becomes reachable and gets exported.
+`v3_emit_buy` turned from `define internal fastcc` into `define hidden` (IR in `$OUT/cap/t03` vs `cap/t04`),
+which turned off ArgPromotion of `ctx` (ctx.accounts + ctx.bumps): r2 got the ctx pointer, the stack
+args dropped from 8 to 7, and the callers' register assignment changed. `pub(crate)` on the inlined trade
+fns keeps the callees internal and the codegen identical. The same applies to any handler that is
+moved into its program fn: the inlined fn must not be `pub`.
+
+| metric | after the wrapper fix | + four program-position bodies |
+| --- | ---: | ---: |
+| official normalized / raw | 1027 / 276 | 1027 / 276, 0 gains, 0 losses |
+| 8 unmatched windows (bytes, ratio) | | all identical |
+| L adjacent order: LIS of 482 | 476 | 480 |
+| model raw once the 8 match (our order) | 429 | 432 |
+| same + buy_handler at the program position | 527 | **648** |
+
+### Not kept: buy_handler in program-fn form (`d6daced5`, t10)
+With `buy_v2` as `#[inline(never)]` and `buy_handler` `#[inline(always)]` (through `execute` or called
+directly), the body moves to the program position but grows 15512 -> 15520 B (0.97998 -> 0.97129): one of
+two consecutive checked adds near buy_v2.rs:345 (original 0x13d130..0x13d198, `a+b` then `+c`) loses its
+second overflow check, plus scheduler swaps. buy_handler is private, so this is not the reachability
+effect. It also gives raw 0xa868 (the call-displacement coincidence window). This is the last L-order item
+worth +216 model raw; it belongs with the buy_handler lanes (diff in `$OUT/out/t05-bh.diff`).
