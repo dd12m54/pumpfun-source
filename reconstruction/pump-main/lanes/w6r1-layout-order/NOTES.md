@@ -112,3 +112,39 @@ to main (create_v2 0.82553, admin_cto 0.37637). `.text` -304 B vs the original. 
 windows already point at the original in-section offsets (#2169 fixed the last `.data.rel.ro` pair).
 Model raw once the 8 match: 432 (our order), 649 (+ buy_handler), 654 (+ pay_out_native), 1023 (full
 original order). The 1023 - 654 gap is U/D symbol-hash order.
+
+## Kept: 0x2bc0 as the upstream generic `Error::with_account_name::<String>` (`0x2bc0-...-trailing-cold-identity-v1`)
+
+The original's 0x2bc0 sits in the U block (upstream generic instances, sorted by symbol) between the
+other `anchor_lang::error::Error::with_account_name` instances. Its body is two `String::clone` calls and no
+drop. That is `with_account_name::<String>`: `String::to_string` is the specialized clone, and the String
+drop disappears because the Solana bump allocator's `dealloc` is a no-op. Earlier attempts used `&String`
+(`6fc0151b`, callgraph-census), which goes through the Display-based `ToString`, a different body, and it was
+inlined anyway.
+
+The original calls it from set_reserved_fee_recipients at a **cold** call site, where the cold-site
+threshold (45) keeps both `alloc::fmt::format` and `with_account_name` outlined. The executable-check site
+calls the same instance and inlines it. Source now:
+
+```rust
+return Err(rent_exempt_error(Error::from(ErrorCode::ConstraintRentExempt).with_account_name(format!("reserved_fee_recipients[{}]", index))));
+...
+#[cold] fn rent_exempt_error(error: Error) -> Error {
+    error
+}
+```
+
+The trailing `#[cold]` identity call makes the block cold while the inliner looks at the earlier
+`format`/`with_account_name` call sites, and then it inlines away to nothing. The local `with_owned_name` and
+`util/account_name.rs` are gone.
+
+| trial | result |
+| --- | --- |
+| t20 cold helper with `error.with_account_name(name)` inside | with_account_name inlined into the helper; the 232-B helper sits in L; loses 0x6fef8 |
+| t21 direct `.with_account_name(format!(..))` | inlined at both sites; loses 0x2bc0, 0x6fef8 |
+| t22 `#[cold]` name builder `rent_exempt_name(index)` | with_account_name outlined in U (correct), but the 160-B builder stays outlined; loses 0x6fef8 |
+| t23 `#[cold] #[inline(always)]` helper | same as t21 |
+| **t24/t25 trailing `#[cold]` identity** | **0 losses; 0x2bc0 matched by the U-block generic** |
+
+Model: P8 432 -> **452**; with buy_handler at the program position 649 -> **671**; also with pay_out_native
+654 -> 677. Unstripped dcdcc13c754e7b81 (stripped candidate 9a24fc1e, the same with or without the dead module).
