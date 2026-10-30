@@ -8,15 +8,17 @@ recreated/used the same worktree, branch and cache dir, so this lane works under
 
 Base: origin/main 7e26cbf (s6 sweep; trials started on 2b85821, identical programs/pump/src). Baseline build: 1027/1035 normalized, 293 raw. Target: original 7,832 B, 39 direct calls.
 
-| metric | base (s6) | h5p (this PR) |
-|---|---:|---:|
-| ratio (target_metric) | 0.88669 | **0.91723** |
-| cand bytes (orig 7832) | 7880 | **7856** |
-| direct calls (orig 39) | 39 | 39 |
-| fullmask diff lines (regs, stack offsets, jumps masked; llc oracle) | 64 | **22** |
-| official normalized / raw | 1027 / 293 | 1027 / 293 |
-| gains / losses | - | none / none |
-| unstripped sha256 | 0560a482.. | dfc8eb87b1eb7ae1a0a48aed4230b3897a1eee81741ccd3833e20170a01b4d73 |
+| metric | base (s6) | h5p | p6 (PR head) |
+|---|---:|---:|---:|
+| ratio (target_metric) | 0.88669 | 0.91723 | **0.99479** |
+| cand bytes (orig 7832) | 7880 | 7856 | **7832** |
+| slots_diff (equal size only) | - | - | **35** |
+| direct calls (orig 39) | 39 | 39 | 39 |
+| fullmask diff lines (regs, stack offsets, jumps masked; llc oracle) | 64 | 22 | **8** |
+| raw diff lines (llc oracle) | 222 | 159 | **10** |
+| official normalized / raw | 1027 / 293 | 1027 / 293 | 1027 / 293 |
+| gains / losses | - | none / none | none / none |
+| unstripped sha256 | 0560a482.. | dfc8eb87.. | 9c53f9167d338c4f16b0fc367f21aab4ac3dbb2f6b91bd895b2c95729e3e1f4e |
 
 ## Mechanism
 
@@ -44,11 +46,26 @@ With the site warm, the helper body decides the rent block:
   stays in the transfer block as in the original (+0x14f0). The helper is fully inlined and its
   symbol does not appear in the binary.
 
-## Remaining residuals (h5p, fullmask 22)
+## p6: transfer through a `pay_owned` wrapper (trade_v3 shape)
+
+The original loads the base/quote mint Box pointers in each predecessor of the transfer call
+and dereferences them (`+0x58` AccountInfo, `+0x30` decimals) in the merge *below* the Option
+diamond (+0x16d8). Call arguments are evaluated in order, so with `transfer_to_owned(..)` called
+directly the derefs come before the recipient clone and the `if native {None} else {Some}`
+diamonds. With `#[inline(always)] fn pay_owned(native, base_mint: &InterfaceAccount<Mint>, curve,
+destination: AccountInfo, amount, quote_mint: &InterfaceAccount<Mint>, token_program, src, dst,
+bump)` (the `trade_v3::pay_owned` body), the caller only evaluates the Box derefs (`&a.base_mint`)
+and the wrapper body does `.as_ref()`/`.decimals` after all arguments, so they end up in the
+merge as in the original.
+
+The parameter order matters. With `token_program` before `quote_mint` (the trade_v3 order, p1),
+the `&a.quote_token_program` gep is evaluated before the quote box load and gets hoisted into
+the token path (`bb27.thread`), which re-lays-out the token path (fullmask 308). With
+`quote_mint` first (p6), the function is 7,832 B, the same size as the original, with ratio 0.99479.
+
+## Remaining residuals (p6, 10 raw diff lines)
 1. Admit branch polarity (first `jeq;ja` vs `jne`, second the other way): IR block order (w4-sweep).
-2. Join loads: we load `quote_token_program`/`quote_mint` fields ([+0x10] then [+0x58]) before
-   the clone sequence; the original loads them after.
-3. Event: `bucket` store scheduled before `amount` (orig after `recipient`).
+2. Event: `bucket` store (creator reload) scheduled before `amount` (orig after `recipient`).
 
 ## Ledger
 Attempts recorded with keys `0x72810-main-2b85821-*` (lane w7r1-execute-errors).
