@@ -62,6 +62,14 @@ def make_patch(base: Path, part: Path, out: Path, tmp: Path):
              for root in (tmp / 'a/pump', tmp / 'b/pump')]
     mode_change = any(modes[0].get(name, False) != modes[1].get(name, False)
                       for name in modes[0].keys() | modes[1].keys())
+    if mode_change:
+        # Git represents executable files using the owner bit. Source identity
+        # considers any execute bit, including group/other-only helpers.
+        for root, flags in zip((tmp / 'a/pump', tmp / 'b/pump'), modes):
+            for name, executable in flags.items():
+                path = root / name
+                mode = path.stat().st_mode
+                path.chmod(mode | 0o100 if executable else mode & ~0o100)
     command = (['git', '-c', 'core.autocrlf=false', 'diff', '--no-index', '--binary',
                 '--no-ext-diff', '--no-textconv', '--no-renames', '--src-prefix=',
                 '--dst-prefix=', '--', 'a/pump', 'b/pump'] if empty_change or mode_change else
