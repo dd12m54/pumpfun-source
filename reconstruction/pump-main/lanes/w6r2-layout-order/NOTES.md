@@ -66,8 +66,19 @@ Where raw is left once the unmatched windows match their sizes (#2168 + this cha
 order. buy_handler at the #[program] position (handler lanes, see w6r1-layout-order) adds +244 (706).
 U/D hash order adds +321 (1027).
 
+## Size marginals (`tools/sizemarg.py`, #2168 + this change, our order)
+
+Size deltas (original - ours): admin_cto +56, swap_hop +40, sweep -48, v3_buy_costs -16, buy_handler -32,
+buy_exact_quote_in -32, buy_exact_quote v3 -16, create_v2 0. Fixing only sweep gives 459 official raw (model).
+The other deltas happen to sum to 0, so `.text` would reach the original size and the data windows would unlock.
+That is a coincidence, like 0xa868: any later size change of another unmatched window undoes it. Each other
+single fix alone gives 276. Fixing all of them gives 462.
+
 ## Attempts
 
 | id | trial | result |
 | --- | --- | --- |
 | `c0ffb98d` | t01 / c01: twin transfer_native definitions swapped | kept: 0 losses; full-order model 1027/1027, badcalls 0 |
+| `a59ea8b9` | scen3 order ceiling at today's sizes on #2168 | analyzed: L +0, U +2 net, D +14 (all hash) |
+| `dce0be0c` | unmatched-size marginals | analyzed (above) |
+| `bd501961` | drop_in_place path-length check | analyzed: our module paths are right, only the crate name differs |
