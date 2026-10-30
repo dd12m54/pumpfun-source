@@ -904,7 +904,7 @@ pub fn buy_exact_quote(ctx:Context<SellV3>,spendable_quote_in:u64,min_tokens_out
         let tokens=u64::try_from(crate::constant_product::tokens_for_quote(curve,available)?).map_err(|_|error!(PumpError::Truncation))?;
         (fees,tokens,available)
     }else{
-        let (net,net_fees)=net_quote_for_budget(&curve.creator,fees.protocol_fee_bps,fees.creator_fee_bps,available)?;
+        let (net,net_fees)=net_quote(curve,&fees,available)?;
 
 
 
@@ -973,7 +973,7 @@ pub fn buy_exact_quote(ctx:Context<SellV3>,spendable_quote_in:u64,min_tokens_out
         (amount,quote,curve_fees,post,costs)
     }else{
         let (mut tokens,mut net)=(tokens,net);
-        let mut costs=v3_buy_costs(a.global.buyback_basis_points,curve.is_mayhem_mode as u8,&quote_fee,net,net_fees.protocol_fee,net_fees.creator_fee,None)?;
+        let mut costs=net_costs(a,&quote_fee,net,&net_fees)?;
         let total=add(costs.0,costs.1)?;
         if total>spendable_quote_in{
             net=net.checked_sub(total-spendable_quote_in).ok_or(PumpError::BuyNotEnoughSolToCoverFees)?;
@@ -995,7 +995,7 @@ pub fn buy_exact_quote(ctx:Context<SellV3>,spendable_quote_in:u64,min_tokens_out
 
 
             tokens=u64::try_from(crate::constant_product::tokens_for_quote(curve,net)?).map_err(|_|error!(PumpError::Truncation))?;
-            costs=v3_buy_costs(a.global.buyback_basis_points,curve.is_mayhem_mode as u8,&quote_fee,net,net_fees.protocol_fee,net_fees.creator_fee,None)?;
+            costs=net_costs(a,&quote_fee,net,&net_fees)?;
         }
 
         require_gte!(tokens,min_tokens_out,PumpError::BuySlippageBelowMinTokensOut);
@@ -1305,3 +1305,7 @@ fn init_volume_user(uva:&mut crate::UserVolumeAccumulator,user:&Signer){if uva.u
 fn transfer_curve_mint_tokens<'info>(token_program:&Interface<'info,TokenInterface>,mint:&InterfaceAccount<'info,Mint>,destination:&InterfaceAccount<'info,TokenAccount>,source:&InterfaceAccount<'info,TokenAccount>,authority:&Account<'info,BondingCurve>,amount:u64,signer_seeds:&[&[&[u8]];1])->Result<()>{
     crate::buy_v2::token_transfers::transfer_curve_tokens(token_program,source,destination,authority,mint.decimals,mint.as_ref(),amount,signer_seeds)
 }
+
+fn net_quote(curve:&BondingCurve,fees:&TradeFees,budget:u64)->Result<(u64,TradeFees)>{net_quote_for_budget(&curve.creator,fees.protocol_fee_bps,fees.creator_fee_bps,budget)}
+
+fn net_costs(a:&SellV3,quote_fee:&Option<native_transfer_fee::Fee>,net:u64,fees:&TradeFees)->Result<(u64,u64,u64)>{let curve:&BondingCurve=&a.bonding_curve;v3_buy_costs(a.global.buyback_basis_points,curve.is_mayhem_mode as u8,quote_fee,net,fees.protocol_fee,fees.creator_fee,None)}
