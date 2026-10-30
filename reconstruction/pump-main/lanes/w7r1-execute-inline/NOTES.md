@@ -24,7 +24,8 @@ remaining differences are inside inlined bodies.
 | main 2b85821 | 15,584 | 0.96854 | 1027 / 276 | |
 | t1 | 15,584 | 0.97284 | 1027 / 276, 0 losses, 0 raw losses | creator store after token_total_supply |
 | t2 | 15,576 | 0.98763 (slots_diff 42) | 1027 / 276, 0 losses, 0 raw losses | t1 + fee `if/else` expression (found by w7r1-execute-blockorder-b / -frame) |
-| **t3** | 15,576 | **0.98870** (slots_diff 43) | 1027 / 276, 0 losses, 0 raw losses | t2 + vqr, ivqr, vtr store order (w7r1-execute-frame `o2`) |
+| t3 | 15,576 | 0.98870 (slots_diff 43) | 1027 / 276, 0 losses, 0 raw losses | t2 + vqr, ivqr, vtr store order (w7r1-execute-frame `o2`) |
+| **d1** | 15,576 | **0.99892 (slots_diff 4)** | 1027 / 276, 0 losses, 0 raw losses | t3 + store helper `write_curve` called in both arms of the vqr `if` |
 
 ## t1: `bonding_curve.creator=creator` after `token_total_supply`
 
@@ -54,6 +55,28 @@ placed after the stores instead of before.
 
 Writing `virtual_quote_reserves` before `initial_virtual_quote_reserves` and `virtual_token_reserves`
 moves the `[r5+0x3e8]` load to the original position. 0.98870 on top of t2.
+
+## d1: the field stores live in a helper called from both arms (residual B solved)
+
+Residual B was the creator pointer in r2 instead of r4 and the `[r10-0x718]` (name) reload
+placed right before `name.len` instead of at the top of the store block. No single in-block IR
+move (20,951 candidates), block move (7,267), branch weight or GEP/memcpy placement reproduced it
+(here and in sibling lanes). The tell is the original's layout: the Sol arm falls through into the
+store block and both non-Sol paths jump to its first instruction, the reload. That is what a
+post-RA tail merge of two identical store sequences leaves behind: register allocation sees two
+copies of the stores, the name pointer is live through each copy with no use (greedy "spill on
+entry": reload at the copy's top) and the creator pointer gets r4; branch folding then merges the
+identical tails.
+
+Source: `init_curve` keeps the `quote_mint==sol` test but calls a plain helper
+`write_curve(bonding_curve, global, virtual_quote_reserves, creator, quote_mint, depth, fee,
+is_mayhem_mode, is_holder_reward)` (all 16 field stores, unchanged order) in both arms, with
+`global.initial_virtual_sol_reserves` and `reserves.unwrap_or(initial_virtual_quote_reserves)`.
+LLVM inlines both copies (no extra call: 125/125). `#[inline(always)]` on the helper is
+byte-identical. Behaviour is identical (same stores, same value). Line count of the region is
+unchanged (the blank line after the signature and the closing brace absorb the new `fn` line).
+Result: 0.99892, slots_diff 4; the IR oracle with the bb112 phi fix on top gives 1.00000, so
+residual A is now the only difference.
 
 ## Residual A: `mov r7,0`/`mov r2,0` (bb112 phi order), root cause
 
