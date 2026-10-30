@@ -61,3 +61,19 @@ Official: 1031/347 (10 raw gains, no losses) vs fresh main.
 Error-return census (`errs2.py`: predecessors of each `stb [sret+0x5a],2` block): orig has early=3, late=32; a5 has
 early=15, late=20. The buy-arm error edges (net_quote, sub3, get_fees, 590 with_values, complete_fill, transfer_input,
 uqp_transfer_native, apply_buy, transfer_base_out) belong to the late block in the original.
+
+## Result 4: post_fill as a tuple output (ledger 21dc079e): 0.89006, call order exact
+
+IR census (post-opt IR of h1): almost every error edge has its own `store err -> sret; tag=2` block. They are
+merged after register allocation by tail merging, so the two machine "return" groups are decided by registers.
+One IR block, bb216, had 13 buy-arm predecessors joined by phis, because it also carried
+`lifetime.end(post_fill.sroa.*)`: the deferred `let post_fill;` at the start of the buy arm keeps the
+post_fill pieces' allocas alive across the whole buy arm.
+
+Fix: no deferred binding. post_fill is the 5th element of the reserves `if` tuple
+(`(reserves,quote,..,Some(post))` / `(..,None)`), so its storage starts after the `if`.
+Result: swap_hop 0.85352 -> **0.89006**, 18,520 B (-64), and the 107-call order now equals the original's.
+The early u128 error block (orig: sell_quote, tokens_for_quote, buy_fee_market_cap) is now merged into the
+late block (33 preds). Its re-separation is the next target, and probably why we are 64 B short.
+
+`let post_fill;` moved to just after the 590 check (p1, e22923cb): 0.85658, 18,528 B.

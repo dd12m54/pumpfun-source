@@ -573,7 +573,7 @@ pub fn transfer_input<'info>(a: &MultiHopCurve<'info>, previous: Option<&Previou
 
 
         let (fees,base_amount,quote_amount,output,adapter_difference,post_fill) = if buy {
-            let post_fill; let selected = crate::legacy_sell::fee_math::get_fees(&a.global,c,&a.fee_config,fee_config_len,cap,trade_amount)?;
+            let selected = crate::legacy_sell::fee_math::get_fees(&a.global,c,&a.fee_config,fee_config_len,cap,trade_amount)?;
             let p_rate = if flag & 1 != 0 { selected.protocol_fee_bps } else { 0 };
             let c_rate = if flag & 2 != 0 { selected.creator_fee_bps } else { 0 };
             let (_,crate::trade::TradeFees{protocol_fee:pf,creator_fee:cf,..}) = crate::trade::net_quote_for_budget(&c.creator,p_rate,c_rate,trade_amount)?;
@@ -589,7 +589,7 @@ pub fn transfer_input<'info>(a: &MultiHopCurve<'info>, previous: Option<&Previou
             let base = u64::try_from(crate::constant_product::tokens_for_quote(c,q)?).map_err(|_| error!(PumpError::Truncation))?;
             require_gt!(base,0,PumpError::BuyZeroAmount);
 
-            let reserves = c.real_token_reserves; let (base_amount,quote_amount,pf,cf) = if base > reserves {
+            let reserves = c.real_token_reserves; let (base_amount,quote_amount,pf,cf,post_fill) = if base > reserves {
 
 
 
@@ -599,10 +599,10 @@ pub fn transfer_input<'info>(a: &MultiHopCurve<'info>, previous: Option<&Previou
                 let allowed = { let user = a.user.key(); !c.is_mayhem_mode && user!=a.global.whitelist_pda }; require!(allowed,PumpError::NotEnoughTokensToBuy);
                 if let Some((fees, quote, post)) = complete_fill(&a.global,&a.fee_config,fee_config_len,cap,c,
                     &h.associated_base_bonding_curve,flag,p_rate,c_rate,trade_amount)? {
-                    post_fill=Some(post);
-                    (reserves,quote,fees.protocol_fee,fees.creator_fee)
-                }else{post_fill=None;(reserves,q,pf,cf)}
-            }else{post_fill=None;(base,q,pf,cf)};
+
+                    (reserves,quote,fees.protocol_fee,fees.creator_fee,Some(post))
+                }else{(reserves,q,pf,cf,None)}
+            }else{(base,q,pf,cf,None)};
 
 
 
