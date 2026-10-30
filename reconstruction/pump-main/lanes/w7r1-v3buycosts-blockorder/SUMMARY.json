@@ -1,0 +1,19 @@
+{
+  "lane": "w7r1-v3buycosts-blockorder",
+  "targets": ["0x80df8"],
+  "base": "origin/main 2b8582135 (1027 normalized / 276 raw); trials on a418dd3",
+  "result": "normalized-match",
+  "best": {"window": "0x80df8", "cand_bytes": 2120, "ratio": 1.0, "slots_diff": 0, "calls": [17, 17],
+           "official": {"normalized": 1028, "raw": 276, "gains": ["0x80df8"], "losses": [], "raw_losses": []},
+           "unstripped_sha256": "60381081bd55975735ce1efeda198dfa50290c98d3949c5acdbb0799cd350c88"},
+  "mechanism": "Both add3 errors leave through one labeled block ('s: {.. break 's Err(e) ..}) and one ?, so the two Err arms share one IR block (sret payload stores sunk with phis); this fixes the greedy sret split (spill everywhere, r3 reloads) without reordering blocks.",
+  "attempts": ["f01","f06","f12","f13","f14","l02","l03","v01","mg-ir","g01","g02","g03","g04","g05","g07","g10","g11"],
+  "rejected": {
+    "byte-identical": ["destructure-split-tuple","post-map-unwrap-or","front-tuple-pair","front-iflet-local-mayhem","second-mapor-ok"],
+    "worse": ["total-buyback-operand-swap 2104B 0.835","second-map-transpose 0.876","add3-pair-andthen 0.952","add3-pair-andthen-match 0.737"],
+    "near": ["closure Result<(u64,u64)> variants 2112B 0.982: add3#1 Ok-check polarity flips (jne vs jeq+ja)"],
+    "compile-failed": ["closure without return type annotation (E0282)"]
+  },
+  "unresolved": ["0x80df8 raw bytes differ only by call displacements (window layout), not by code"],
+  "next_ideas": ["Check other RA-tie residuals (e.g. buy_v2/sell_v2 handlers) for consecutive ? on the same Result type whose original shares one Err arm; irmerge.py-style IR sinking of Err-arm stores is a cheap oracle for that."]
+}
